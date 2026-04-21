@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Garden tool">
+  <rect x="90" y="30" width="20" height="130" fill="#8b6a3a" rx="2"/>
+  <rect x="70" y="20" width="60" height="22" fill="#c0b088" rx="4"/>
+  <circle cx="100" cy="165" r="20" fill="#b8a676" stroke="#8b6a3a" stroke-width="3"/>
+  <rect x="96" y="155" width="8" height="20" fill="#8b6a3a"/>
+</svg>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bramble &amp; Co. — Botanical Home Goods</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Bramble &amp; Co.</a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="index.html">Shop</a></li>
+          <li>
+            <a href="cart.html" data-testid="cart-link">
+              Cart (<span id="cart-count" data-testid="cart-count">0</span>)
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container shop-layout">
+    <aside class="filters" aria-labelledby="filter-heading">
+      <h2 id="filter-heading">Filter</h2>
+      <fieldset>
+        <legend>Category</legend>
+        <label><input type="checkbox" name="category" value="planters" /> Planters</label>
+        <label><input type="checkbox" name="category" value="tools" /> Tools</label>
+        <label><input type="checkbox" name="category" value="seeds" /> Seeds</label>
+      </fieldset>
+      <fieldset>
+        <legend>Price</legend>
+        <label for="price-max">Max price: <span id="price-display">$100</span></label>
+        <input type="range" id="price-max" min="10" max="100" value="100" />
+      </fieldset>
+    </aside>
+
+    <section class="products" aria-label="Products">
+      <h1>Shop Everything</h1>
+      <ul class="product-grid" id="product-grid">
+        <li class="product-card" data-product-id="terracotta-planter" data-category="planters" data-price="24">
+          <img src="assets/planter.svg" alt="Terracotta Planter" />
+          <h3>Terracotta Planter</h3>
+          <p class="price">$24.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-terracotta-planter">Add to Cart</button>
+        </li>
+        <li class="product-card" data-product-id="brass-watering-can" data-category="tools" data-price="42">
+          <img src="assets/tool.svg" alt="Brass Watering Can" />
+          <h3>Brass Watering Can</h3>
+          <p class="price">$42.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-brass-watering-can">Add to Cart</button>
+        </li>
+        <li class="product-card" data-product-id="heirloom-tomato-seeds" data-category="seeds" data-price="8">
+          <img src="assets/seeds.svg" alt="Heirloom Tomato Seeds" />
+          <h3>Heirloom Tomato Seeds</h3>
+          <p class="price">$8.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-heirloom-tomato-seeds">Add to Cart</button>
+        </li>
+        <li class="product-card" data-product-id="pruning-shears" data-category="tools" data-price="35">
+          <img src="assets/tool.svg" alt="Pruning Shears" />
+          <h3>Pruning Shears</h3>
+          <p class="price">$35.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-pruning-shears">Add to Cart</button>
+        </li>
+        <li class="product-card" data-product-id="ceramic-pot-trio" data-category="planters" data-price="56">
+          <img src="assets/planter.svg" alt="Ceramic Pot Trio" />
+          <h3>Ceramic Pot Trio</h3>
+          <p class="price">$56.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-ceramic-pot-trio">Add to Cart</button>
+        </li>
+        <li class="product-card" data-product-id="wildflower-seed-mix" data-category="seeds" data-price="12">
+          <img src="assets/seeds.svg" alt="Wildflower Seed Mix" />
+          <h3>Wildflower Seed Mix</h3>
+          <p class="price">$12.00</p>
+          <button type="button" class="add-to-cart btn-dynamic" data-testid="add-to-cart-wildflower-seed-mix">Add to Cart</button>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

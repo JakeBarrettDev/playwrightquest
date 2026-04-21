@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Planter">
+  <rect x="55" y="95" width="90" height="80" fill="#c97c5d" rx="4"/>
+  <ellipse cx="100" cy="95" rx="45" ry="10" fill="#8a5a3b"/>
+  <path d="M100 95 Q95 40 75 55 M100 95 Q100 35 105 30 M100 95 Q110 45 125 65" stroke="#5d7c45" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="80" cy="55" r="6" fill="#7a9a5c"/>
+  <circle cx="108" cy="35" r="7" fill="#7a9a5c"/>
+  <circle cx="125" cy="62" r="6" fill="#7a9a5c"/>
+</svg>

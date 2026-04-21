@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Seed packet">
+  <rect x="40" y="50" width="120" height="130" fill="#c0a870" rx="6"/>
+  <rect x="40" y="50" width="120" height="32" fill="#a08854" rx="6"/>
+  <text x="100" y="73" font-family="Georgia, serif" font-size="16" text-anchor="middle" fill="#fffaee" font-weight="bold">SEEDS</text>
+  <ellipse cx="70" cy="140" rx="5" ry="3" fill="#3c2f18"/>
+  <ellipse cx="100" cy="145" rx="5" ry="3" fill="#3c2f18"/>
+  <ellipse cx="130" cy="138" rx="5" ry="3" fill="#3c2f18"/>
+  <ellipse cx="85" cy="158" rx="5" ry="3" fill="#3c2f18"/>
+  <ellipse cx="115" cy="160" rx="5" ry="3" fill="#3c2f18"/>
+</svg>

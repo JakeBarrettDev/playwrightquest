@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Cart — Bramble &amp; Co.</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Bramble &amp; Co.</a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="index.html">Shop</a></li>
+          <li>
+            <a href="cart.html" data-testid="cart-link">
+              Cart (<span id="cart-count" data-testid="cart-count">0</span>)
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container cart-layout">
+    <h1>Your Cart</h1>
+
+    <div id="cart-empty" hidden>
+      <p>Your cart is empty. <a href="index.html">Continue shopping.</a></p>
+    </div>
+
+    <table id="cart-items" aria-label="Cart items">
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col">Quantity</th>
+          <th scope="col">Price</th>
+          <th scope="col">Remove</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="cart-summary">
+      <p>Subtotal: <strong data-testid="cart-subtotal" id="cart-subtotal">$0.00</strong></p>
+      <a href="checkout.html" class="btn primary" data-testid="checkout-link" role="button">
+        Proceed to Checkout
+      </a>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
