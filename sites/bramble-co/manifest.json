@@ -1,0 +1,237 @@
+{
+  "site": "bramble-co",
+  "version": "1.0.0",
+  "base_url": "/sites/bramble-co",
+  "pages": {
+    "home": "/sites/bramble-co/index.html",
+    "cart": "/sites/bramble-co/cart.html",
+    "checkout": "/sites/bramble-co/checkout.html"
+  },
+  "elements": [
+    {
+      "id": "cart-nav-link",
+      "description": "Primary nav link to the cart page, includes live item count in the label",
+      "page": "home",
+      "ideal_locator": "getByRole('link', { name: /Cart \\(\\d+\\)/ })",
+      "acceptable_locators": [
+        "getByTestId('cart-link')"
+      ],
+      "brittle_locators": [
+        "locator('header nav li:nth-child(2) a')",
+        "locator('a[href=\"cart.html\"]')"
+      ],
+      "aria_notes": "Link text is 'Cart (N)' where N is the cart count. Nested <span data-testid='cart-count'> holds the number.",
+      "intentional_traps": [],
+      "challenge_hooks": ["navigation", "cart_badge_assertion"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "cart-count-badge",
+      "description": "Numeric badge inside the cart nav link reflecting total items in cart",
+      "page": "home",
+      "ideal_locator": "getByTestId('cart-count')",
+      "acceptable_locators": [
+        "locator('#cart-count')"
+      ],
+      "brittle_locators": [
+        "locator('header nav span:first-of-type')"
+      ],
+      "aria_notes": "Purely numeric text content. No role. Best reached via test id because the number itself isn't a stable accessible name.",
+      "intentional_traps": [],
+      "challenge_hooks": ["cart_state", "text_assertion"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "category-filter-planters",
+      "description": "Checkbox filter on the home page that shows only products in the Planters category",
+      "page": "home",
+      "ideal_locator": "getByLabel('Planters')",
+      "acceptable_locators": [
+        "getByRole('checkbox', { name: 'Planters' })"
+      ],
+      "brittle_locators": [
+        "locator('input[value=\"planters\"]')",
+        "locator('fieldset:first-of-type label:nth-child(1) input')"
+      ],
+      "aria_notes": "Wrapped in its own <label>; Planters is the only checkbox with that exact text.",
+      "intentional_traps": [],
+      "challenge_hooks": ["filter_interaction", "visibility_assertion"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "price-max-slider",
+      "description": "Range input controlling the maximum visible product price on the home page",
+      "page": "home",
+      "ideal_locator": "getByLabel(/Max price/)",
+      "acceptable_locators": [
+        "getByRole('slider', { name: /Max price/ })",
+        "locator('#price-max')"
+      ],
+      "brittle_locators": [
+        "locator('input[type=\"range\"]')"
+      ],
+      "aria_notes": "Native range input. Playwright's fill() does not work on ranges — use locator.evaluate or keyboard arrows to adjust, or dispatch an input event.",
+      "intentional_traps": ["range_input_fill_trap"],
+      "challenge_hooks": ["filter_interaction", "range_input"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "add-to-cart-terracotta-planter",
+      "description": "Add to Cart button on the Terracotta Planter product card",
+      "page": "home",
+      "ideal_locator": "getByRole('listitem').filter({ hasText: 'Terracotta Planter' }).getByRole('button', { name: 'Add to Cart' })",
+      "acceptable_locators": [
+        "getByTestId('add-to-cart-terracotta-planter')"
+      ],
+      "brittle_locators": [
+        "locator('.btn-cta-7f3k')",
+        "locator('.add-to-cart').first()",
+        "locator('.product-grid li:nth-child(1) button')"
+      ],
+      "aria_notes": "Six product cards each have an 'Add to Cart' button — scoping by product is required. The button's class list includes a randomized 'btn-cta-XXXX' suffix that changes on every page load.",
+      "intentional_traps": ["dynamic_class", "duplicate_accessible_name"],
+      "challenge_hooks": ["add_to_cart_flow", "scoped_locator", "cart_badge_assertion"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "proceed-to-checkout-link",
+      "description": "Link styled as a button that navigates from the cart to the checkout page",
+      "page": "cart",
+      "ideal_locator": "getByRole('link', { name: 'Proceed to Checkout' })",
+      "acceptable_locators": [
+        "getByRole('button', { name: 'Proceed to Checkout' })",
+        "getByTestId('checkout-link')"
+      ],
+      "brittle_locators": [
+        "locator('.cart-summary a')",
+        "locator('a.primary')"
+      ],
+      "aria_notes": "An anchor element with role='button'. Playwright's getByRole('link') matches its native role; getByRole('button') matches the ARIA role. Both are acceptable.",
+      "intentional_traps": ["anchor_as_button"],
+      "challenge_hooks": ["navigation", "checkout_start"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "cart-item-remove-button",
+      "description": "Per-row Remove button in the cart items table",
+      "page": "cart",
+      "ideal_locator": "getByRole('button', { name: 'Remove Terracotta Planter' })",
+      "acceptable_locators": [
+        "getByRole('row').filter({ hasText: 'Terracotta Planter' }).getByRole('button', { name: /Remove/ })"
+      ],
+      "brittle_locators": [
+        "locator('.remove-btn').first()",
+        "locator('#cart-items tr:nth-child(1) button')"
+      ],
+      "aria_notes": "Every row has its own Remove button. Visible text is identical on all of them ('Remove'), but each carries a product-specific aria-label ('Remove <product name>'). Relying on visible text alone will match multiple elements.",
+      "intentional_traps": ["duplicate_visible_text"],
+      "challenge_hooks": ["accessible_name_vs_text", "row_scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "cart-subtotal",
+      "description": "Running subtotal below the cart items table",
+      "page": "cart",
+      "ideal_locator": "getByTestId('cart-subtotal')",
+      "acceptable_locators": [
+        "locator('#cart-subtotal')"
+      ],
+      "brittle_locators": [
+        "locator('.cart-summary strong')",
+        "locator('main p:last-of-type strong')"
+      ],
+      "aria_notes": "Text content is a currency-formatted string. Use toHaveText('$X.XX') or a regex assertion; do not read via textContent without awaiting.",
+      "intentional_traps": [],
+      "challenge_hooks": ["currency_assertion", "state_after_mutation"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "checkout-full-name-input",
+      "description": "Full name text input on the checkout form",
+      "page": "checkout",
+      "ideal_locator": "getByLabel('Full name')",
+      "acceptable_locators": [
+        "getByRole('textbox', { name: 'Full name' })"
+      ],
+      "brittle_locators": [
+        "locator('#full-name')",
+        "locator('input[name=\"fullName\"]')",
+        "locator('#checkout-form input').first()"
+      ],
+      "aria_notes": "Standard label-wrapped input. getByLabel is the canonical choice.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_fill"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "checkout-zip-input",
+      "description": "ZIP code input on the checkout form — intentionally missing a <label>",
+      "page": "checkout",
+      "ideal_locator": "getByPlaceholder('ZIP code')",
+      "acceptable_locators": [
+        "getByRole('textbox', { name: 'ZIP code' })"
+      ],
+      "brittle_locators": [
+        "locator('#zip')",
+        "locator('input[name=\"zip\"]')",
+        "locator('#checkout-form input:nth-child(5)')"
+      ],
+      "aria_notes": "INTENTIONAL TRAP: this input has no associated <label>, so getByLabel('ZIP code') will not find it. The placeholder is the only accessible name source — getByPlaceholder or getByRole('textbox', { name }) (which reads the placeholder as an accessible name) work. Tests should recognize this and choose accordingly.",
+      "intentional_traps": ["missing_label"],
+      "challenge_hooks": ["form_fill", "accessibility_fallback"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "checkout-submit-button",
+      "description": "Final purchase submission button on the checkout form",
+      "page": "checkout",
+      "ideal_locator": "getByRole('button', { name: 'Complete Purchase' })",
+      "acceptable_locators": [
+        "getByTestId('checkout-submit')"
+      ],
+      "brittle_locators": [
+        "locator('button[type=\"submit\"]')",
+        "locator('.btn-cta-7f3k')",
+        "locator('#submit-order')"
+      ],
+      "aria_notes": "INTENTIONAL TRAP: on click, button text transitions 'Complete Purchase' -> 'Processing...' for ~1.5s, then the form is hidden and the order confirmation appears. Tests must either (a) wait for the confirmation to be visible, or (b) assert the intermediate 'Processing...' state, but must not assert on 'Complete Purchase' after clicking. Class list also includes a randomized 'btn-cta-XXXX' suffix.",
+      "intentional_traps": ["state_change", "dynamic_class"],
+      "challenge_hooks": ["form_submission", "web_first_assertion", "state_transition"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "order-confirmation-section",
+      "description": "Order confirmation panel shown after a successful checkout submission",
+      "page": "checkout",
+      "ideal_locator": "getByRole('heading', { name: 'Order Confirmed' })",
+      "acceptable_locators": [
+        "getByRole('region').filter({ hasText: 'Order Confirmed' })",
+        "locator('#order-confirmation')"
+      ],
+      "brittle_locators": [
+        "locator('.confirmation')",
+        "locator('main section')"
+      ],
+      "aria_notes": "Section is initially hidden; revealed 1.5s after submit. aria-live='polite' announces to assistive tech. Use toBeVisible() — it auto-retries until the element is attached and displayed.",
+      "intentional_traps": ["delayed_reveal"],
+      "challenge_hooks": ["web_first_assertion", "async_wait"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "order-number",
+      "description": "Dynamic order number rendered inside the confirmation panel",
+      "page": "checkout",
+      "ideal_locator": "getByTestId('order-number')",
+      "acceptable_locators": [
+        "locator('#order-number')"
+      ],
+      "brittle_locators": [
+        "locator('.confirmation p:nth-child(2) span')"
+      ],
+      "aria_notes": "Content is a six-digit number generated at submit time. Do not assert on an exact value — match a pattern like /^\\d{6}$/.",
+      "intentional_traps": ["nondeterministic_text"],
+      "challenge_hooks": ["regex_assertion", "dynamic_content"],
+      "difficulty": "intermediate"
+    }
+  ]
+}
