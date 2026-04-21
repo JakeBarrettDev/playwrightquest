@@ -37,6 +37,11 @@ yarn-error.log*
 # claude code local settings
 .claude/settings.local.json
 
+# playwright sandbox runs
+/.sandbox/
+/test-results/
+/playwright-report/
+
 # vercel
 .vercel
 
