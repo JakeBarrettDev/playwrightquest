@@ -40,7 +40,8 @@ export async function POST(req: Request) {
       );
     }
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = message.startsWith("Unknown challenge id:") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
