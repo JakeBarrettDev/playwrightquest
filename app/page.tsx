@@ -53,12 +53,14 @@ export default async function Home() {
         <h2 className="text-lg font-semibold">Fictitious sites</h2>
         <ul className="mt-3 space-y-2">
           <li>
-            <Link
+            <a
               href="/sites/bramble-co/"
+              target="_blank"
+              rel="noreferrer noopener"
               className="text-emerald-700 underline underline-offset-4 hover:text-emerald-900 dark:text-emerald-400"
             >
               Bramble &amp; Co.
-            </Link>
+            </a>
             <span className="ml-2 text-sm text-zinc-500">
               E-commerce storefront — product grid, cart, checkout
             </span>
