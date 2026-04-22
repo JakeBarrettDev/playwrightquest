@@ -1,0 +1,46 @@
+{
+  "id": "bramble-checkout-happy-path",
+  "title": "Checkout: Happy Path",
+  "site": "bramble-co",
+  "difficulty": "intermediate",
+  "clientBrief": "Bramble & Co. is deploying a new checkout flow next Friday. The storefront team needs automated regression coverage for a complete guest purchase before the deploy window opens. You are the QA automation engineer on this account. Write one Playwright test covering the full happy path from cart to confirmation.",
+  "acceptanceCriteria": [
+    "Given a guest user starts on the Bramble & Co. home page, when they add the Terracotta Planter to their cart, then the cart nav link should reflect an updated item count.",
+    "Given a guest user with items in their cart, when they proceed to checkout, then the checkout form should be visible.",
+    "Given a guest user on the checkout page, when they fill in valid contact and shipping details and submit the form, then the Order Confirmed section should become visible and display a six-digit order number."
+  ],
+  "manifestElements": [
+    "cart-nav-link",
+    "cart-count-badge",
+    "add-to-cart-terracotta-planter",
+    "proceed-to-checkout-link",
+    "checkout-full-name-input",
+    "checkout-zip-input",
+    "checkout-submit-button",
+    "order-confirmation-section",
+    "order-number"
+  ],
+  "tags": [
+    "checkout",
+    "add_to_cart_flow",
+    "form_submission",
+    "web_first_assertion",
+    "state_transition",
+    "regex_assertion"
+  ],
+  "suggestedPlaywrightAPIs": [
+    "page.goto",
+    "getByRole",
+    "getByLabel",
+    "getByPlaceholder",
+    "getByTestId",
+    "locator.click",
+    "locator.fill",
+    "expect().toBeVisible",
+    "expect().toHaveText",
+    "expect().toHaveValue"
+  ],
+  "startingCode": "import { test, expect } from '@playwright/test';\n\ntest('guest completes checkout happy path', async ({ page }) => {\n  await page.goto('/sites/bramble-co/');\n\n  // 1. Add the Terracotta Planter to the cart and assert the count updated.\n  // 2. Navigate to the cart, then proceed to checkout.\n  // 3. Fill the checkout form and submit.\n  // 4. Assert the confirmation section is visible and the order number matches /^\\d{6}$/.\n});\n",
+  "xpReward": 150,
+  "hintPenalty": 25
+}

@@ -1,37 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PlaywrightQuest
 
-## Getting Started
+A browser-based game for learning Playwright end-to-end testing. Players write real Playwright tests in an in-browser Monaco IDE against purpose-built fictitious websites, and an LLM grades each submission on correctness **and** quality — selector hierarchy, web-first assertions, async patterns, BDD coverage.
 
-First, run the development server:
+Working title. See [`PlaywrightQuest.md`](./PlaywrightQuest.md) for the full product brief.
+
+## Status
+
+Layer 1 is under construction. Current progress:
+
+- Static Bramble & Co. site at `/sites/bramble-co/`
+- DOM manifest (`sites/bramble-co/manifest.json`) — the grading ground truth
+- Monaco IDE with Playwright types and ranked autocomplete at `/ide`
+- Local Playwright execution sandbox at `/api/execute`
+- Corpus + keyword retrieval under `corpus/`
+- Multi-provider grading engine at `/api/grade` (Anthropic, OpenAI, Gemini)
+
+Still to land: challenge UI, feedback panel, and the front-to-back wire-together.
+
+## Running
 
 ```bash
+npm install
+npx playwright install chromium   # first time only
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000`. The IDE preview is at `/ide`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Grading — bring your own key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+PlaywrightQuest **does not ship with an API key**. Players (or self-hosted operators) supply their own for whichever LLM they prefer. Keys are passed in the request body to `/api/grade` and forwarded directly to the provider — they are **never persisted or logged** by the server.
 
-## Learn More
+Supported providers:
 
-To learn more about Next.js, take a look at the following resources:
+| Provider  | Default model          | Key source                                |
+|-----------|------------------------|-------------------------------------------|
+| Anthropic | `claude-sonnet-4-6`    | https://console.anthropic.com/            |
+| OpenAI    | `gpt-4o-2024-08-06`    | https://platform.openai.com/              |
+| Gemini    | `gemini-2.0-flash`     | https://aistudio.google.com/apikey        |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Each request body looks like:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```jsonc
+{
+  "provider": "anthropic",          // or "openai" | "gemini"
+  "apiKey": "sk-ant-...",
+  "model": "claude-sonnet-4-6",     // optional override
+  "challengeId": "bramble-checkout-happy-path",
+  "playerCode": "import { test, expect } ...",
+  "executionResult": { /* the body returned from /api/execute */ },
+  "hintsUsed": 0
+}
+```
 
-## Deploy on Vercel
+### Prompt caching
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The context package is structured for prefix caching so that the expensive, stable parts are paid for once:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# playwrightquest
+1. **Authoritative block** — grader instructions + full Playwright docs + rubric rules. Static across every request.
+2. **Site block** — DOM manifest slice + site-specific challenge notes. Static per site.
+3. **Dynamic block** — challenge brief, player code, execution result, retrieved corpus chunks.
+
+The Anthropic adapter sets explicit `cache_control: ephemeral` on blocks 1 and 2. OpenAI caches prefixes automatically. Gemini uses implicit caching via a stable `systemInstruction`.
+
+## Editing the AI's behavior
+
+The grading engine is a context-engineered LLM — it is **not** fine-tuned. Its judgment is entirely a function of what's in the `corpus/` directory, which is treated as the authoritative source of truth for every grading call:
+
+- [`corpus/grader-instructions.md`](./corpus/grader-instructions.md) — the system prompt. Edit to sharpen the agent's stance.
+- [`corpus/playwright-docs/`](./corpus/playwright-docs/) — Playwright documentation chunks. This is the end-all, be-all authority.
+- [`corpus/rubric-rules/`](./corpus/rubric-rules/) — opinionated scoring rules.
+- [`corpus/challenge-notes/`](./corpus/challenge-notes/) — per-site gotchas surfaced by RAG.
+
+These are Markdown. Edit, commit, reload — no code deploy needed.
+
+## Project layout
+
+```
+app/                    # Next.js app router
+  api/
+    execute/            # POST — runs player Playwright test locally
+    grade/              # POST — BYOK grading against any of three providers
+  ide/                  # Monaco IDE preview page
+challenges/             # Challenge JSONs (BDD criteria + manifest ids)
+components/             # React components (IDE wired; Challenge/Feedback TBD)
+corpus/                 # Editable, authoritative grading context
+lib/
+  challenges/           # Challenge loader
+  corpus/               # Corpus loader + keyword retrieval
+  execution/            # Local sandbox runner
+  grading/              # Context assembler + provider adapters
+  types/                # Shared TS types
+sites/bramble-co/       # First fictitious site + DOM manifest
+```
