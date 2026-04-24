@@ -6,14 +6,15 @@ Web-first assertions (those on `Locator`/`Page`/`APIResponse` that auto-retry) a
 
 ## Scoring
 
-| Pattern | Score |
-|---------|-------|
-| Web-first assertion after action (`await expect(locator).toBeVisible()`) | 1.0 |
-| Web-first assertion on a read value (`await expect(locator).toHaveText(...)`) | 1.0 |
-| Generic assertion on a pre-resolved value (`expect(jsonBody.status).toBe('ok')`) | 0.9 |
-| `page.waitForTimeout` + any assertion | 0.5 |
-| Read via `textContent()`/`inputValue()` then `expect(...).toBe(...)` | 0.4 |
-| No assertion at all | 0.0 |
+| Pattern | Score | Notes |
+|---------|-------|-------|
+| Web-first assertion after action (`await expect(locator).toBeVisible()`) | 1.0 | |
+| Web-first assertion on a read value (`await expect(locator).toHaveText(...)`) | 1.0 | |
+| Generic assertion on a pre-resolved value (`expect(jsonBody.status).toBe('ok')`) | 0.9 | |
+| `locator.waitFor({ state: 'hidden' })` before asserting absence | 0.8 | Legitimate for waiting on disappearing spinners/overlays — not the same as waitForTimeout |
+| `page.waitForTimeout` + any assertion | 0.5 | |
+| Read via `textContent()`/`inputValue()` then `expect(...).toBe(...)` | 0.4 | |
+| No assertion at all | 0.0 | |
 
 ## Required
 
@@ -36,3 +37,20 @@ Assertions that merely check the page is still loaded (e.g. `toHaveURL` on the s
 - **No assertion:** "This test performs actions but never asserts the outcome. Add `await expect(page.getByRole('heading', { name: 'Order Confirmed' })).toBeVisible();` to verify the state the test set up."
 - **waitForTimeout present:** "Line N uses `page.waitForTimeout(2000)`. Fixed sleeps make tests slow and flaky. Replace with `await expect(locator).toBeVisible()` on the element that signals completion."
 - **textContent compared with expect:** "`expect(await locator.textContent()).toBe(...)` evaluates once and does not retry. Swap to `await expect(locator).toHaveText(...)` so the assertion auto-waits."
+
+## `locator.waitFor` vs. `waitForTimeout` — an important distinction
+
+`page.waitForTimeout(ms)` is an unconditional sleep. It is always wrong in production
+tests.
+
+`locator.waitFor({ state: 'hidden' })` waits for a *specific condition* — the element
+reaching a particular state. This is legitimate when you need to wait for a loading
+spinner or overlay to disappear before asserting on content beneath it.
+
+```ts
+// Legitimate — wait for the loading overlay to disappear
+await page.getByTestId('loading-spinner').waitFor({ state: 'hidden' });
+await expect(page.getByRole('heading', { name: 'Results' })).toBeVisible();
+```
+
+Do not penalise this pattern. Do penalise `waitForTimeout` regardless of context.

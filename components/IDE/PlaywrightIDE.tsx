@@ -5,10 +5,13 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { playwrightDts } from "./playwrightTypes";
 import { registerPlaywrightCompletions } from "./completions";
+import Terminal, { type TerminalCommand } from "./Terminal";
 import ChallengePanel from "@/components/Challenge/ChallengePanel";
 import FeedbackPanel, {
   type FeedbackState,
 } from "@/components/Feedback/FeedbackPanel";
+import TracePlayer from "@/components/TracePlayer/TracePlayer";
+import { useTracePlayer } from "@/components/TracePlayer/useTracePlayer";
 import ProviderSettingsDialog from "@/components/Settings/ProviderSettingsDialog";
 import {
   PROVIDER_LABELS,
@@ -22,10 +25,16 @@ import {
 import type { Challenge } from "@/lib/types/challenge";
 import type { ExecutionResult } from "@/lib/execution";
 import type { GradeResponse } from "@/lib/types/grading";
+import type { AnnotatedComment } from "@/lib/trace/types";
 
-type BottomTab = "output" | "feedback";
+type BottomTab = "output" | "feedback" | "terminal";
 
 type ExecutionResultShape = ExecutionResult;
+
+interface ReplayData {
+  runId: string;
+  annotatedComments: AnnotatedComment[];
+}
 
 interface Props {
   challenge: Challenge;
@@ -41,13 +50,15 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [running, setRunning] = useState(false);
-  const [execResult, setExecResult] = useState<ExecutionResultShape | null>(
-    null
-  );
+  const [outputLines, setOutputLines] = useState<string[]>([]);
+  const [execResult, setExecResult] = useState<ExecutionResultShape | null>(null);
   const [execError, setExecError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>({ kind: "idle" });
   const [bottomTab, setBottomTab] = useState<BottomTab>("output");
+  const [replayData, setReplayData] = useState<ReplayData | null>(null);
+  const [videoModalRunId, setVideoModalRunId] = useState<string | null>(null);
 
+  const tracePlayer = useTracePlayer();
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
@@ -87,6 +98,89 @@ export default function PlaywrightIDE({ challenge }: Props) {
     setSettingsOpen(false);
   }, []);
 
+  // Shared grading + trace annotation logic used by both GUI run and terminal run.
+  const performGrading = useCallback(
+    async (
+      execution: ExecutionResultShape,
+      currentCode: string,
+      command?: TerminalCommand
+    ) => {
+      if (!settings) return;
+
+      setFeedback({ kind: "running" });
+      setBottomTab("feedback");
+
+      let gradingResponse: GradeResponse | null = null;
+      try {
+        const res = await fetch("/api/grade", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            provider: settings.provider,
+            apiKey: settings.apiKey,
+            model: settings.model || undefined,
+            challengeId: challenge.id,
+            playerCode: currentCode,
+            executionResult: execution,
+            hintsUsed: 0,
+          }),
+        });
+        const data = (await res.json()) as GradeResponse | { error: string };
+        if (!res.ok || "error" in data) {
+          setFeedback({
+            kind: "error",
+            message: "error" in data ? data.error : `HTTP ${res.status}`,
+          });
+        } else {
+          gradingResponse = data;
+          setFeedback({ kind: "result", response: data });
+        }
+      } catch (e) {
+        setFeedback({
+          kind: "error",
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      // Trace annotation + TracePlayer handling.
+      if (execution.runId && gradingResponse) {
+        try {
+          const lineComments = gradingResponse.result.feedback.lineComments;
+          const annotateRes = await fetch(
+            `/api/trace/${execution.runId}/annotate`,
+            {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ lineComments }),
+            }
+          );
+          const { annotatedComments } = (await annotateRes.json()) as {
+            annotatedComments: AnnotatedComment[];
+          };
+
+          const stepThrough = command?.kind === "debug";
+          const shouldOpen =
+            !execution.passed ||
+            command?.kind === "ui" ||
+            command?.kind === "debug";
+
+          if (shouldOpen) {
+            tracePlayer.open({
+              runId: execution.runId,
+              annotatedComments,
+              stepThrough,
+            });
+          } else {
+            setReplayData({ runId: execution.runId, annotatedComments });
+          }
+        } catch {
+          // Annotation failure must not break the grading flow.
+        }
+      }
+    },
+    [challenge.id, settings, tracePlayer]
+  );
+
   const handleRun = useCallback(async () => {
     if (!settings) {
       setSettingsOpen(true);
@@ -94,12 +188,14 @@ export default function PlaywrightIDE({ challenge }: Props) {
     }
 
     setRunning(true);
+    setOutputLines([]);
     setExecError(null);
     setExecResult(null);
     setFeedback({ kind: "idle" });
+    setReplayData(null);
     setBottomTab("output");
 
-    let execution: ExecutionResultShape;
+    let execution: ExecutionResultShape | null = null;
     try {
       const res = await fetch("/api/execute", {
         method: "POST",
@@ -110,56 +206,71 @@ export default function PlaywrightIDE({ challenge }: Props) {
           challengeId: challenge.id,
         }),
       });
-      const data = (await res.json()) as ExecutionResultShape | { error: string };
-      if (!res.ok || "error" in data) {
-        setExecError("error" in data ? data.error : `HTTP ${res.status}`);
+
+      if (!res.ok || !res.body) {
+        setExecError(`HTTP ${res.status}`);
         setRunning(false);
         return;
       }
-      execution = data;
-      setExecResult(execution);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const event of events) {
+          const line = event.replace(/^data: /, "").trim();
+          if (!line) continue;
+          try {
+            const msg = JSON.parse(line) as
+              | { type: "output"; line: string }
+              | { type: "result"; result: ExecutionResultShape }
+              | { type: "error"; message: string };
+            if (msg.type === "output") {
+              setOutputLines((prev) => [...prev, msg.line]);
+            } else if (msg.type === "result") {
+              execution = msg.result;
+              setExecResult(msg.result);
+            } else if (msg.type === "error") {
+              setExecError(msg.message);
+              setRunning(false);
+              return;
+            }
+          } catch {
+            // malformed chunk, skip
+          }
+        }
+      }
     } catch (e) {
       setExecError(e instanceof Error ? e.message : String(e));
       setRunning(false);
       return;
     }
 
-    // Kick off grading immediately; leave running=true so the UI reflects
-    // the full round-trip as one action.
-    setFeedback({ kind: "running" });
-    setBottomTab("feedback");
-    try {
-      const res = await fetch("/api/grade", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          provider: settings.provider,
-          apiKey: settings.apiKey,
-          model: settings.model || undefined,
-          challengeId: challenge.id,
-          playerCode: code,
-          executionResult: execution,
-          hintsUsed: 0,
-        }),
-      });
-      const data = (await res.json()) as GradeResponse | { error: string };
-      if (!res.ok || "error" in data) {
-        setFeedback({
-          kind: "error",
-          message: "error" in data ? data.error : `HTTP ${res.status}`,
-        });
-      } else {
-        setFeedback({ kind: "result", response: data });
-      }
-    } catch (e) {
-      setFeedback({
-        kind: "error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
+    if (!execution) {
+      setExecError("No result received from runner");
       setRunning(false);
+      return;
     }
-  }, [challenge.id, challenge.site, code, settings]);
+
+    await performGrading(execution, code);
+    setRunning(false);
+  }, [challenge.id, challenge.site, code, settings, performGrading]);
+
+  // Called by the Terminal component after it finishes its own execution fetch.
+  const handleTerminalExecutionComplete = useCallback(
+    async (result: ExecutionResultShape, command: TerminalCommand) => {
+      setExecResult(result);
+      setReplayData(null);
+      await performGrading(result, code, command);
+    },
+    [code, performGrading]
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-zinc-950">
@@ -197,10 +308,19 @@ export default function PlaywrightIDE({ challenge }: Props) {
             tab={bottomTab}
             onTabChange={setBottomTab}
             running={running}
+            outputLines={outputLines}
             execResult={execResult}
             execError={execError}
             feedback={feedback}
+            replayData={replayData}
+            challenge={challenge}
+            code={code}
             onJumpToLine={handleJumpToLine}
+            onOpenTracePlayer={(data) =>
+              tracePlayer.open({ runId: data.runId, annotatedComments: data.annotatedComments })
+            }
+            onOpenVideoModal={(runId) => setVideoModalRunId(runId)}
+            onTerminalExecutionComplete={handleTerminalExecutionComplete}
           />
         </div>
         <div className="flex min-h-0 lg:w-96 xl:w-[28rem]">
@@ -213,6 +333,22 @@ export default function PlaywrightIDE({ challenge }: Props) {
           initial={settings}
           onSave={handleSaveSettings}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {tracePlayer.isOpen && tracePlayer.runId && (
+        <TracePlayer
+          runId={tracePlayer.runId}
+          annotatedComments={tracePlayer.annotatedComments}
+          stepThrough={tracePlayer.stepThrough}
+          onClose={tracePlayer.close}
+        />
+      )}
+
+      {videoModalRunId && (
+        <VideoModal
+          runId={videoModalRunId}
+          onClose={() => setVideoModalRunId(null)}
         />
       )}
     </div>
@@ -267,66 +403,113 @@ function BottomPanel({
   tab,
   onTabChange,
   running,
+  outputLines,
   execResult,
   execError,
   feedback,
+  replayData,
+  challenge,
+  code,
   onJumpToLine,
+  onOpenTracePlayer,
+  onOpenVideoModal,
+  onTerminalExecutionComplete,
 }: {
   tab: BottomTab;
   onTabChange: (tab: BottomTab) => void;
   running: boolean;
+  outputLines: string[];
   execResult: ExecutionResultShape | null;
   execError: string | null;
   feedback: FeedbackState;
+  replayData: ReplayData | null;
+  challenge: Challenge;
+  code: string;
   onJumpToLine: (line: number) => void;
+  onOpenTracePlayer: (data: ReplayData) => void;
+  onOpenVideoModal: (runId: string) => void;
+  onTerminalExecutionComplete: (result: ExecutionResultShape, command: TerminalCommand) => void;
 }) {
   const nothingYet =
-    !running && !execResult && !execError && feedback.kind === "idle";
-  if (nothingYet) return null;
+    !running &&
+    outputLines.length === 0 &&
+    !execResult &&
+    !execError &&
+    feedback.kind === "idle";
+
+  // Terminal is always visible; other tabs only appear after a run.
+  const showOutputAndFeedback = !nothingYet;
 
   return (
     <div className="flex min-h-0 max-h-[45vh] flex-col border-t border-zinc-800 bg-zinc-950">
       <div className="flex items-center gap-1 border-b border-zinc-800 bg-zinc-900 px-2 py-1.5">
+        {showOutputAndFeedback && (
+          <>
+            <TabButton
+              active={tab === "output"}
+              onClick={() => onTabChange("output")}
+              label="Output"
+              badge={execResult ? (execResult.passed ? "PASS" : "FAIL") : undefined}
+              badgeTone={execResult?.passed ? "emerald" : execResult ? "rose" : null}
+            />
+            <TabButton
+              active={tab === "feedback"}
+              onClick={() => onTabChange("feedback")}
+              label="Feedback"
+              badge={
+                feedback.kind === "result"
+                  ? String(feedback.response.result.score)
+                  : feedback.kind === "running"
+                    ? "…"
+                    : feedback.kind === "error"
+                      ? "!"
+                      : undefined
+              }
+              badgeTone={
+                feedback.kind === "result"
+                  ? feedback.response.result.score >= 70
+                    ? "emerald"
+                    : "amber"
+                  : feedback.kind === "error"
+                    ? "rose"
+                    : null
+              }
+            />
+          </>
+        )}
         <TabButton
-          active={tab === "output"}
-          onClick={() => onTabChange("output")}
-          label="Output"
-          badge={execResult ? (execResult.passed ? "PASS" : "FAIL") : undefined}
-          badgeTone={execResult?.passed ? "emerald" : execResult ? "rose" : null}
-        />
-        <TabButton
-          active={tab === "feedback"}
-          onClick={() => onTabChange("feedback")}
-          label="Feedback"
-          badge={
-            feedback.kind === "result"
-              ? String(feedback.response.result.score)
-              : feedback.kind === "running"
-                ? "…"
-                : feedback.kind === "error"
-                  ? "!"
-                  : undefined
-          }
-          badgeTone={
-            feedback.kind === "result"
-              ? feedback.response.result.score >= 70
-                ? "emerald"
-                : "amber"
-              : feedback.kind === "error"
-                ? "rose"
-                : null
-          }
+          active={tab === "terminal"}
+          onClick={() => onTabChange("terminal")}
+          label="Terminal"
+          badgeTone={null}
         />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {tab === "output" ? (
+        {tab === "output" && showOutputAndFeedback && (
           <OutputView
             running={running}
+            outputLines={outputLines}
             result={execResult}
             error={execError}
+            replayData={replayData}
+            onOpenTracePlayer={onOpenTracePlayer}
+            onOpenVideoModal={onOpenVideoModal}
           />
-        ) : (
+        )}
+        {tab === "feedback" && showOutputAndFeedback && (
           <FeedbackPanel state={feedback} onJumpToLine={onJumpToLine} />
+        )}
+        {tab === "terminal" && (
+          <Terminal
+            challenge={challenge}
+            code={code}
+            onExecutionComplete={onTerminalExecutionComplete}
+          />
+        )}
+        {(tab === "output" || tab === "feedback") && !showOutputAndFeedback && (
+          <div className="flex h-full items-center justify-center text-xs text-zinc-600">
+            Run a test to see results here.
+          </div>
         )}
       </div>
     </div>
@@ -376,16 +559,33 @@ function TabButton({
 
 function OutputView({
   running,
+  outputLines,
   result,
   error,
+  replayData,
+  onOpenTracePlayer,
+  onOpenVideoModal,
 }: {
   running: boolean;
+  outputLines: string[];
   result: ExecutionResultShape | null;
   error: string | null;
+  replayData: ReplayData | null;
+  onOpenTracePlayer: (data: ReplayData) => void;
+  onOpenVideoModal: (runId: string) => void;
 }) {
   return (
     <div className="h-full overflow-auto p-3 font-mono text-xs text-zinc-100">
-      {running && !result && (
+      {outputLines.length > 0 && (
+        <div className="mb-2 space-y-0.5">
+          {outputLines.map((line, i) => (
+            <div key={i} className="whitespace-pre-wrap text-zinc-300">
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
+      {running && !result && outputLines.length === 0 && (
         <div className="text-zinc-400">Running Playwright…</div>
       )}
 
@@ -398,8 +598,26 @@ function OutputView({
 
       {result && (
         <div className="space-y-2">
-          <div className="text-zinc-400">
-            exit {result.exitCode} · {(result.durationMs / 1000).toFixed(2)}s
+          <div className="flex flex-wrap items-center gap-2 text-zinc-400">
+            <span>exit {result.exitCode} · {(result.durationMs / 1000).toFixed(2)}s</span>
+            {replayData && (
+              <button
+                type="button"
+                onClick={() => onOpenTracePlayer(replayData)}
+                className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-emerald-400 hover:bg-zinc-800"
+              >
+                Replay Test ▶
+              </button>
+            )}
+            {result.runId && (
+              <button
+                type="button"
+                onClick={() => onOpenVideoModal(result.runId!)}
+                className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-sky-400 hover:bg-zinc-800"
+              >
+                Play Recording ▶
+              </button>
+            )}
           </div>
 
           {result.errorMessage && (
@@ -444,6 +662,43 @@ function OutputView({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function VideoModal({
+  runId,
+  onClose,
+}: {
+  runId: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl rounded border border-zinc-700 bg-zinc-900 p-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-zinc-200">Test Recording</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs text-zinc-400 hover:text-zinc-100"
+          >
+            ✕ Close
+          </button>
+        </div>
+        <video
+          src={`/api/trace/${runId}/video`}
+          controls
+          autoPlay
+          className="w-full rounded border border-zinc-700"
+        />
+      </div>
     </div>
   );
 }

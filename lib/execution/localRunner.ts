@@ -54,8 +54,24 @@ export class LocalRunner implements ExecutionRunner {
 
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (b: Buffer) => (stdout += b.toString()));
-    child.stderr.on("data", (b: Buffer) => (stderr += b.toString()));
+    child.stdout.on("data", (b: Buffer) => {
+      const chunk = b.toString();
+      stdout += chunk;
+      if (req.onOutput) {
+        for (const line of chunk.split("\n")) {
+          if (line.trim()) req.onOutput(line);
+        }
+      }
+    });
+    child.stderr.on("data", (b: Buffer) => {
+      const chunk = b.toString();
+      stderr += chunk;
+      if (req.onOutput) {
+        for (const line of chunk.split("\n")) {
+          if (line.trim()) req.onOutput(line);
+        }
+      }
+    });
 
     const exitCode = await new Promise<number>((resolve) => {
       const killer = setTimeout(() => {
