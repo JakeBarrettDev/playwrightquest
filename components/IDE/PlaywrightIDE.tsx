@@ -5,6 +5,7 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { playwrightDts } from "./playwrightTypes";
 import { registerPlaywrightCompletions } from "./completions";
+import SitePreview, { type SitePreviewHandle } from "./SitePreview";
 import ChallengePanel from "@/components/Challenge/ChallengePanel";
 import FeedbackPanel, {
   type FeedbackState,
@@ -24,6 +25,7 @@ import type { ExecutionResult } from "@/lib/execution";
 import type { GradeResponse } from "@/lib/types/grading";
 
 type BottomTab = "output" | "feedback";
+type RightTab = "challenge" | "preview";
 
 type ExecutionResultShape = ExecutionResult;
 
@@ -47,8 +49,10 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [execError, setExecError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>({ kind: "idle" });
   const [bottomTab, setBottomTab] = useState<BottomTab>("output");
+  const [rightTab, setRightTab] = useState<RightTab>("challenge");
 
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const previewRef = useRef<SitePreviewHandle | null>(null);
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
@@ -203,8 +207,24 @@ export default function PlaywrightIDE({ challenge }: Props) {
             onJumpToLine={handleJumpToLine}
           />
         </div>
-        <div className="flex min-h-0 lg:w-96 xl:w-[28rem]">
-          <ChallengePanel challenge={challenge} />
+        <div className="flex min-h-0 flex-col border-l border-zinc-800 lg:w-[28rem] xl:w-[32rem]">
+          <RightTabBar
+            tab={rightTab}
+            onTabChange={setRightTab}
+            onPreviewReload={() => previewRef.current?.reload()}
+          />
+          <div className="relative min-h-0 flex-1">
+            <div
+              className={`absolute inset-0 ${rightTab === "challenge" ? "" : "hidden"}`}
+            >
+              <ChallengePanel challenge={challenge} />
+            </div>
+            <div
+              className={`absolute inset-0 ${rightTab === "preview" ? "" : "hidden"}`}
+            >
+              <SitePreview ref={previewRef} site={challenge.site} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -445,5 +465,64 @@ function OutputView({
         </div>
       )}
     </div>
+  );
+}
+
+function RightTabBar({
+  tab,
+  onTabChange,
+  onPreviewReload,
+}: {
+  tab: RightTab;
+  onTabChange: (t: RightTab) => void;
+  onPreviewReload: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 border-b border-zinc-800 bg-zinc-900 px-2 py-1.5">
+      <RightTabButton
+        active={tab === "challenge"}
+        onClick={() => onTabChange("challenge")}
+        label="Challenge"
+      />
+      <RightTabButton
+        active={tab === "preview"}
+        onClick={() => onTabChange("preview")}
+        label="Preview"
+      />
+      {tab === "preview" && (
+        <button
+          type="button"
+          onClick={onPreviewReload}
+          className="ml-auto rounded px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          title="Reload preview to the site's starting state"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RightTabButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded px-2 py-1 text-xs ${
+        active
+          ? "bg-zinc-800 text-zinc-100"
+          : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
