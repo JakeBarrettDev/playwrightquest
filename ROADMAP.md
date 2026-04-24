@@ -275,7 +275,35 @@ decision between the two variants above.
 
 ---
 
-## 10. Upcoming Chunks (tentative order)
+## 10. Playwright-Aware Editor Diagnostics (deferred)
+
+Currently the Monaco TypeScript service shows `ts(80007): 'await' has no
+effect on the type of this expression` whenever a player puts `await` in
+front of a locator call (`await page.getByRole(...)`). This is technically
+correct — locators are synchronous — but a beginner is likely to respond by
+stripping awaits off *everything*, including the actions and assertions that
+do need them. Chunk 9 suppresses code 80007 globally.
+
+**What to build later:**
+
+- A custom Monaco code-action / lint layer that understands Playwright
+  specifically:
+  - Flag `await page.getBy*` with a **specific** message: "Locators are
+    synchronous — `await` belongs on the action or assertion, not the
+    locator." Offer a quick-fix to remove the misplaced `await`.
+  - Flag missing `await` on `expect(...)` chains and on `.click()`, `.fill()`,
+    etc. Those are the ones that silently pass in unit-test dry runs but
+    break real flows.
+  - Flag `page.waitForTimeout(...)` in a player test. Explain auto-waiting.
+- Consider driving the diagnostics off the same rubric JSON the grader uses
+  — one source of truth for "what's good" instead of two.
+
+Deferred until the grader's line-level feedback is landing reliably, so the
+editor diagnostics and the grading feedback don't contradict each other.
+
+---
+
+## 11. Upcoming Chunks (tentative order)
 
 | Chunk | What | Rationale |
 |-------|------|-----------|

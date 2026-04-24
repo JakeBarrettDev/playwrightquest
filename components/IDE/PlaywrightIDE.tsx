@@ -2,7 +2,13 @@
 
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { playwrightDts } from "./playwrightTypes";
 import { registerPlaywrightCompletions } from "./completions";
 import SitePreview, { type SitePreviewHandle } from "./SitePreview";
@@ -50,6 +56,56 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [feedback, setFeedback] = useState<FeedbackState>({ kind: "idle" });
   const [bottomTab, setBottomTab] = useState<BottomTab>("output");
   const [rightTab, setRightTab] = useState<RightTab>("challenge");
+  const [rightWidth, setRightWidth] = useState<number>(480);
+  const [isWide, setIsWide] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Restore the last user-chosen width; fall back to a sensible default.
+    // `setState` inside an effect is normally discouraged, but this is a
+    // one-shot hydration from a client-only source (localStorage) that has
+    // no server-rendered equivalent.
+    try {
+      const saved = window.localStorage.getItem("pq.rightPanelWidth");
+      if (saved) {
+        const n = Number.parseInt(saved, 10);
+        if (Number.isFinite(n) && n > 200) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setRightWidth(n);
+        }
+      }
+    } catch {
+      /* localStorage blocked — fine */
+    }
+
+    // Only apply an explicit width in the row layout (lg+). Below lg the
+    // panel stacks and should be full-width.
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsWide(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsWide(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const handleRightResize = useCallback((deltaX: number) => {
+    setRightWidth((w) => {
+      // Handle is between editor (left) and right panel. Dragging the handle
+      // LEFT (deltaX < 0) should GROW the right panel.
+      const next = w - deltaX;
+      const viewportW = window.innerWidth || 1600;
+      const min = 280;
+      const max = Math.max(min + 200, viewportW - 400);
+      const clamped = Math.min(max, Math.max(min, next));
+      try {
+        window.localStorage.setItem(
+          "pq.rightPanelWidth",
+          String(Math.round(clamped))
+        );
+      } catch {
+        /* ignore */
+      }
+      return clamped;
+    });
+  }, []);
 
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const previewRef = useRef<SitePreviewHandle | null>(null);
@@ -70,6 +126,14 @@ export default function PlaywrightIDE({ challenge }: Props) {
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
       noSemanticValidation: false,
       noSyntaxValidation: false,
+      // 80007: "'await' has no effect on the type of this expression". This
+      // fires on `await page.getByRole(...)` because locators are synchronous.
+      // Technically correct, but a beginner reading that warning is likely to
+      // rip awaits off actions and assertions too (which DO return Promises)
+      // and break their tests. Hide it for now; surface the lesson via the
+      // grader's "You only await actions and assertions — locators are
+      // synchronous" feedback instead. See ROADMAP §10.
+      diagnosticCodesToIgnore: [80007],
     });
     monaco.languages.typescript.typescriptDefaults.addExtraLib(
       playwrightDts,
@@ -176,7 +240,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
       />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
             <Editor
               defaultLanguage="typescript"
@@ -207,7 +271,11 @@ export default function PlaywrightIDE({ challenge }: Props) {
             onJumpToLine={handleJumpToLine}
           />
         </div>
-        <div className="flex min-h-0 flex-col border-l border-zinc-800 lg:w-[28rem] xl:w-[32rem]">
+        <ResizeHandle onDrag={handleRightResize} />
+        <div
+          className="flex min-h-0 w-full flex-col border-t border-zinc-800 lg:w-auto lg:shrink-0 lg:border-t-0"
+          style={isWide ? { width: `${rightWidth}px` } : undefined}
+        >
           <RightTabBar
             tab={rightTab}
             onTabChange={setRightTab}
@@ -465,6 +533,56 @@ function OutputView({
         </div>
       )}
     </div>
+  );
+}
+
+function ResizeHandle({
+  onDrag,
+}: {
+  onDrag: (deltaX: number) => void;
+}) {
+  const draggingRef = useRef<{ lastX: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    draggingRef.current = { lastX: e.clientX };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // Prevent text selection elsewhere on the page while dragging.
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = draggingRef.current;
+    if (!drag) return;
+    const delta = e.clientX - drag.lastX;
+    drag.lastX = e.clientX;
+    if (delta !== 0) onDrag(delta);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* pointer may already be released */
+    }
+    document.body.style.userSelect = "";
+    document.body.style.cursor = "";
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize right panel"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className="hidden w-1.5 shrink-0 cursor-col-resize bg-zinc-900 transition-colors hover:bg-emerald-600 active:bg-emerald-500 lg:block"
+    />
   );
 }
 
