@@ -121,18 +121,14 @@ export default function TracePlayer({
         <>
           {/* Main body */}
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-            {/* Screenshot pane */}
+            {/* Video pane */}
             <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-zinc-900 p-4">
-              {step?.screenshotRef ? (
-                <ScreenshotView
-                  runId={runId}
-                  sha={step.screenshotRef}
-                  boundingBox={step.boundingBox}
-                  hasError={!!step.error}
-                />
-              ) : (
-                <div className="text-sm text-zinc-500">No screenshot for this step</div>
-              )}
+              <VideoScrubber
+                runId={runId}
+                timestampMs={step?.videoTimestampMs ?? 0}
+                boundingBox={step?.boundingBox}
+                hasError={!!step?.error}
+              />
             </div>
 
             {/* Step list */}
@@ -216,55 +212,60 @@ export default function TracePlayer({
   );
 }
 
-function ScreenshotView({
+function VideoScrubber({
   runId,
-  sha,
+  timestampMs,
   boundingBox,
   hasError,
 }: {
   runId: string;
-  sha: string;
+  timestampMs: number;
   boundingBox?: TraceStep["boundingBox"];
   hasError: boolean;
 }) {
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoSize, setVideoSize] = useState<{ w: number; h: number } | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
-  const handleLoad = () => {
-    const img = imgRef.current;
-    if (!img) return;
-    setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
-    setImgSize({ w: img.clientWidth, h: img.clientHeight });
+  // Seek to timestamp when step changes.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = timestampMs / 1000;
+  }, [timestampMs]);
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setNaturalSize({ w: video.videoWidth, h: video.videoHeight });
+    setVideoSize({ w: video.clientWidth, h: video.clientHeight });
   };
 
-  // Recalculate rendered size on resize.
   useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
+    const video = videoRef.current;
+    if (!video) return;
     const observer = new ResizeObserver(() => {
-      setImgSize({ w: img.clientWidth, h: img.clientHeight });
+      if (video) setVideoSize({ w: video.clientWidth, h: video.clientHeight });
     });
-    observer.observe(img);
+    observer.observe(video);
     return () => observer.disconnect();
   }, []);
 
-  const src = `/api/trace/${runId}/frame/${sha}`;
-
   const highlight =
-    boundingBox && imgSize && naturalSize
-      ? scaleBox(boundingBox, naturalSize, imgSize)
+    boundingBox && videoSize && naturalSize
+      ? scaleBox(boundingBox, naturalSize, videoSize)
       : null;
 
   return (
     <div className="relative inline-block max-h-full max-w-full">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={imgRef}
-        src={src}
-        alt="Test step screenshot"
-        onLoad={handleLoad}
+      <video
+        ref={videoRef}
+        src={`/api/trace/${runId}/video`}
+        onLoadedMetadata={handleLoadedMetadata}
         className="block max-h-[calc(100vh-220px)] max-w-full rounded border border-zinc-700 object-contain"
+        muted
+        playsInline
+        preload="auto"
       />
       {highlight && (
         <div

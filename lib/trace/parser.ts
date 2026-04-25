@@ -61,7 +61,9 @@ export function parseTraceZip(zipPath: string): TraceStep[] {
     else if (ev.type === "after") afterMap.set((ev as RawAfter).callId, ev as RawAfter);
   }
 
-  const steps: TraceStep[] = [];
+  // Build steps with rawStartTime for timestamp computation.
+  type StepWithRaw = TraceStep & { rawStartTime: number };
+  const rawSteps: StepWithRaw[] = [];
   let index = 0;
 
   for (const [callId, before] of beforeMap) {
@@ -72,13 +74,9 @@ export function parseTraceZip(zipPath: string): TraceStep[] {
     const after = afterMap.get(callId);
     const input = inputMap.get(callId);
 
-    const startTime = before.startTime ?? 0;
-    const endTime = after?.endTime ?? startTime;
-    const durationMs = Math.max(0, endTime - startTime);
-
-    const screenshotAttachment = after?.attachments?.find(
-      (a) => a.contentType === "image/png" && a.sha1
-    );
+    const rawStartTime = before.startTime ?? 0;
+    const endTime = after?.endTime ?? rawStartTime;
+    const durationMs = Math.max(0, endTime - rawStartTime);
 
     const sourceLine = before.frames?.find(
       (f) => f.file?.endsWith("player.spec.ts")
@@ -86,18 +84,29 @@ export function parseTraceZip(zipPath: string): TraceStep[] {
 
     const locator = extractLocator(apiName, before.params);
 
-    steps.push({
+    rawSteps.push({
       index: index++,
       action: apiName,
       params: before.params ?? {},
       locator,
       boundingBox: input?.targetBoundingBox,
-      screenshotRef: screenshotAttachment?.sha1,
       durationMs,
+      videoTimestampMs: 0, // filled in below
       error: after?.error?.message ?? undefined,
       sourceLine,
+      rawStartTime,
     });
   }
+
+  // Compute videoTimestampMs relative to the first action's start.
+  const originTime = rawSteps.length > 0
+    ? Math.min(...rawSteps.map((s) => s.rawStartTime))
+    : 0;
+
+  const steps: TraceStep[] = rawSteps.map(({ rawStartTime, ...step }) => ({
+    ...step,
+    videoTimestampMs: rawStartTime - originTime + step.durationMs / 2,
+  }));
 
   return steps;
 }

@@ -45,7 +45,6 @@ export class DockerRunner implements ExecutionRunner {
         baseUrl,
         browserName,
         headless: !headed,
-        recordVideo: headed,
       });
       await writeFile(join(runDir, "playwright.config.js"), configContent, "utf8");
 
@@ -168,7 +167,6 @@ interface ConfigOptions {
   baseUrl: string;
   browserName: string;
   headless: boolean;
-  recordVideo: boolean;
 }
 
 function buildPlaywrightConfig(opts: ConfigOptions): string {
@@ -186,7 +184,7 @@ module.exports = {
     headless: ${opts.headless},
     screenshot: 'only-on-failure',
     trace: 'on',
-    video: '${opts.recordVideo ? "on" : "off"}',
+    video: 'on',
   },
   projects: [{ name: '${opts.browserName}', use: { browserName: '${opts.browserName}' } }],
   outputDir: '/work/test-results',

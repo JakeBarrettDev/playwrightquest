@@ -24,7 +24,7 @@ export async function GET(
 
   try {
     const steps = parseTraceZip(zipPath);
-    return Response.json({ steps });
+    return Response.json({ steps, hasVideo: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return Response.json({ error: `Failed to parse trace: ${message}` }, { status: 500 });

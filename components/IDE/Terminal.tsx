@@ -79,7 +79,7 @@ export default function Terminal({ challenge, code, onExecutionComplete }: Props
           const cmd = inputRef.current.trim();
           inputRef.current = "";
           term.writeln("");
-          handleCommand(cmd, term, challenge, code, runningRef, onExecutionComplete);
+          handleCommand(cmd, term, challenge, codeRef.current, runningRef, onCompleteRef.current);
         } else if (data === "") {
           // Backspace
           if (inputRef.current.length > 0) {

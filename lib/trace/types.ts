@@ -9,8 +9,8 @@ export interface TraceStep {
     width: number;
     height: number;
   };
-  screenshotRef?: string;
   durationMs: number;
+  videoTimestampMs: number;
   error?: string;
   sourceLine?: number;
 }
