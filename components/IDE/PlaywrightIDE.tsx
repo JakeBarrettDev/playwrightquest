@@ -2,7 +2,13 @@
 
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { playwrightDts } from "./playwrightTypes";
 import { registerPlaywrightCompletions } from "./completions";
 import Terminal, { type TerminalCommand } from "./Terminal";
@@ -64,6 +70,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
 
   const tracePlayer = useTracePlayer();
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const previewRef = useRef<SitePreviewHandle | null>(null);
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
@@ -81,6 +88,14 @@ export default function PlaywrightIDE({ challenge }: Props) {
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
       noSemanticValidation: false,
       noSyntaxValidation: false,
+      // 80007: "'await' has no effect on the type of this expression". This
+      // fires on `await page.getByRole(...)` because locators are synchronous.
+      // Technically correct, but a beginner reading that warning is likely to
+      // rip awaits off actions and assertions too (which DO return Promises)
+      // and break their tests. Hide it for now; surface the lesson via the
+      // grader's "You only await actions and assertions — locators are
+      // synchronous" feedback instead. See ROADMAP §10.
+      diagnosticCodesToIgnore: [80007],
     });
     monaco.languages.typescript.typescriptDefaults.addExtraLib(
       playwrightDts,
@@ -371,8 +386,28 @@ export default function PlaywrightIDE({ challenge }: Props) {
             onTerminalExecutionComplete={handleTerminalExecutionComplete}
           />
         </div>
-        <div className="flex min-h-0 lg:w-96 xl:w-[28rem]">
-          <ChallengePanel challenge={challenge} />
+        <ResizeHandle onDrag={handleRightResize} />
+        <div
+          className="flex min-h-0 w-full flex-col border-t border-zinc-800 lg:w-auto lg:shrink-0 lg:border-t-0"
+          style={isWide ? { width: `${rightWidth}px` } : undefined}
+        >
+          <RightTabBar
+            tab={rightTab}
+            onTabChange={setRightTab}
+            onPreviewReload={() => previewRef.current?.reload()}
+          />
+          <div className="relative min-h-0 flex-1">
+            <div
+              className={`absolute inset-0 ${rightTab === "challenge" ? "" : "hidden"}`}
+            >
+              <ChallengePanel challenge={challenge} />
+            </div>
+            <div
+              className={`absolute inset-0 ${rightTab === "preview" ? "" : "hidden"}`}
+            >
+              <SitePreview ref={previewRef} site={challenge.site} />
+            </div>
+          </div>
         </div>
       </div>
 

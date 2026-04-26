@@ -8,7 +8,7 @@ interface Props {
 
 export default function ChallengePanel({ challenge }: Props) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-y-auto border-l border-zinc-800 bg-zinc-950 text-zinc-200">
+    <aside className="flex h-full min-h-0 flex-col overflow-y-auto bg-zinc-950 text-zinc-200">
       <header className="border-b border-zinc-800 bg-zinc-900 px-4 py-3">
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-zinc-500">
           <span>Challenge</span>
@@ -65,16 +65,29 @@ export default function ChallengePanel({ challenge }: Props) {
           </ul>
         </div>
 
-        <div className="border-t border-zinc-800 pt-3 text-xs text-zinc-500">
-          Site:{" "}
-          <a
-            href={`/sites/${challenge.site}/`}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="font-mono text-emerald-400 underline underline-offset-2"
-          >
-            /sites/{challenge.site}/
-          </a>
+        <div className="space-y-2 border-t border-zinc-800 pt-3 text-xs text-zinc-500">
+          <div>
+            Site:{" "}
+            <a
+              href={`/sites/${challenge.site}/`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-mono text-emerald-400 underline underline-offset-2"
+            >
+              /sites/{challenge.site}/
+            </a>
+          </div>
+          <div>
+            Editor tip: type{" "}
+            <code className="rounded bg-zinc-800 px-1 font-mono text-zinc-300">
+              pw
+            </code>{" "}
+            for Playwright scaffolds —{" "}
+            <code className="font-mono text-zinc-400">pwtest</code>,{" "}
+            <code className="font-mono text-zinc-400">pwclick</code>,{" "}
+            <code className="font-mono text-zinc-400">pwexpectvisible</code>,{" "}
+            <code className="font-mono text-zinc-400">pwpom</code>.
+          </div>
         </div>
       </section>
     </aside>
