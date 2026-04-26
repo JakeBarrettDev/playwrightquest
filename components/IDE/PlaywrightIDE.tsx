@@ -58,6 +58,10 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [replayData, setReplayData] = useState<ReplayData | null>(null);
   const [videoModalRunId, setVideoModalRunId] = useState<string | null>(null);
 
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [hintText, setHintText] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+
   const tracePlayer = useTracePlayer();
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
 
@@ -98,6 +102,38 @@ export default function PlaywrightIDE({ challenge }: Props) {
     setSettingsOpen(false);
   }, []);
 
+  const handleRequestHint = useCallback(async () => {
+    if (!settings) {
+      setSettingsOpen(true);
+      return;
+    }
+    setHintLoading(true);
+    const nextHintsUsed = hintsUsed + 1;
+    try {
+      const res = await fetch("/api/hint", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.provider,
+          apiKey: settings.apiKey,
+          model: settings.model || undefined,
+          challengeId: challenge.id,
+          playerCode: code,
+          hintsUsed,
+        }),
+      });
+      const data = (await res.json()) as { hint?: string; error?: string };
+      if (data.hint) {
+        setHintsUsed(nextHintsUsed);
+        setHintText(data.hint);
+      }
+    } catch {
+      // hint failure is non-fatal
+    } finally {
+      setHintLoading(false);
+    }
+  }, [settings, challenge.id, code, hintsUsed]);
+
   // Shared grading + trace annotation logic used by both GUI run and terminal run.
   const performGrading = useCallback(
     async (
@@ -122,7 +158,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
             challengeId: challenge.id,
             playerCode: currentCode,
             executionResult: execution,
-            hintsUsed: 0,
+            hintsUsed,
           }),
         });
         const data = (await res.json()) as GradeResponse | { error: string };
@@ -178,7 +214,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
         }
       }
     },
-    [challenge.id, settings, tracePlayer]
+    [challenge.id, settings, tracePlayer, hintsUsed]
   );
 
   const handleRun = useCallback(async () => {
@@ -278,12 +314,24 @@ export default function PlaywrightIDE({ challenge }: Props) {
         challengeTitle={challenge.title}
         running={running}
         settings={settings}
+        hintsUsed={hintsUsed}
+        hintPenalty={challenge.hintPenalty}
+        hintLoading={hintLoading}
         onRun={handleRun}
         onOpenSettings={() => setSettingsOpen(true)}
+        onRequestHint={handleRequestHint}
       />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 flex-1 flex-col">
+          {hintText && (
+            <HintPanel
+              hint={hintText}
+              hintsUsed={hintsUsed}
+              hintPenalty={challenge.hintPenalty}
+              onDismiss={() => setHintText(null)}
+            />
+          )}
           <div className="min-h-0 flex-1">
             <Editor
               defaultLanguage="typescript"
@@ -359,14 +407,22 @@ function Toolbar({
   challengeTitle,
   running,
   settings,
+  hintsUsed,
+  hintPenalty,
+  hintLoading,
   onRun,
   onOpenSettings,
+  onRequestHint,
 }: {
   challengeTitle: string;
   running: boolean;
   settings: ProviderSettings | null;
+  hintsUsed: number;
+  hintPenalty: number;
+  hintLoading: boolean;
   onRun: () => void;
   onOpenSettings: () => void;
+  onRequestHint: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-zinc-200">
@@ -377,6 +433,20 @@ function Toolbar({
         <span className="ml-2 text-sm font-semibold">{challengeTitle}</span>
       </div>
       <div className="flex items-center gap-2 text-sm">
+        {hintsUsed > 0 && (
+          <span className="text-xs text-amber-400">
+            -{hintsUsed * hintPenalty} XP
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onRequestHint}
+          disabled={hintLoading || running}
+          title="Request a hint (costs XP)"
+          className="rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-amber-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {hintLoading ? "…" : "Hint"}
+        </button>
         <button
           type="button"
           onClick={onOpenSettings}
@@ -395,6 +465,43 @@ function Toolbar({
           {running ? "Running…" : "Run & Grade"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function HintPanel({
+  hint,
+  hintsUsed,
+  hintPenalty,
+  onDismiss,
+}: {
+  hint: string;
+  hintsUsed: number;
+  hintPenalty: number;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-b border-amber-900/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+      <span className="mt-0.5 shrink-0 text-base">💡</span>
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-amber-400">
+            Hint {hintsUsed}
+          </span>
+          <span className="text-xs text-amber-600">
+            (-{hintPenalty} XP)
+          </span>
+        </div>
+        <p className="text-amber-100">{hint}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 text-xs text-amber-600 hover:text-amber-300"
+        aria-label="Dismiss hint"
+      >
+        ✕
+      </button>
     </div>
   );
 }

@@ -1,108 +1,156 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile, rm, readFile, stat, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile, copyFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import type {
   ExecutionRequest,
   ExecutionResult,
   ExecutionRunner,
 } from "./types";
+import { buildPlaywrightConfig } from "./config";
+import { cleanupOldTraces } from "./cleanup";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const SANDBOX_ROOT = ".sandbox";
 
 export class LocalRunner implements ExecutionRunner {
   constructor(private readonly projectRoot: string) {}
 
   async run(req: ExecutionRequest): Promise<ExecutionResult> {
+    const tracesRoot = join(this.projectRoot, ".sandbox", "traces");
+    cleanupOldTraces(tracesRoot).catch(() => {});
+
+    const runId = randomUUID().replace(/-/g, "");
     const started = Date.now();
-    const sandboxRoot = join(this.projectRoot, SANDBOX_ROOT);
-    await mkdir(sandboxRoot, { recursive: true });
-    const runDir = await mkdtemp(join(sandboxRoot, "run-"));
-    const specPath = join(runDir, "player.spec.ts");
-    const artifactsDir = join(runDir, "artifacts");
+    const runDir = await mkdtemp(join(tmpdir(), "pq-local-"));
 
-    await writeFile(specPath, req.code, "utf8");
+    try {
+      await writeFile(join(runDir, "player.spec.ts"), req.code, "utf8");
 
-    const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const playwrightConfig = join(this.projectRoot, "playwright.config.ts");
-
-    const child = spawn(
-      "npx",
-      [
-        "playwright",
-        "test",
-        "--config",
-        playwrightConfig,
-        "--project",
-        req.browser ?? "chromium",
-        "--reporter=line",
-        "--output",
-        artifactsDir,
-      ],
-      {
-        cwd: this.projectRoot,
-        shell: true,
-        env: {
-          ...process.env,
-          PQ_SITE: req.site,
-          PQ_RUN_DIR: runDir,
-          // Disable Playwright's default worker-per-file sharding for faster single-spec runs.
-          CI: "1",
-        },
-      }
-    );
-
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (b: Buffer) => {
-      const chunk = b.toString();
-      stdout += chunk;
-      if (req.onOutput) {
-        for (const line of chunk.split("\n")) {
-          if (line.trim()) req.onOutput(line);
-        }
-      }
-    });
-    child.stderr.on("data", (b: Buffer) => {
-      const chunk = b.toString();
-      stderr += chunk;
-      if (req.onOutput) {
-        for (const line of chunk.split("\n")) {
-          if (line.trim()) req.onOutput(line);
-        }
-      }
-    });
-
-    const exitCode = await new Promise<number>((resolve) => {
-      const killer = setTimeout(() => {
-        child.kill("SIGKILL");
-      }, timeoutMs + 5_000);
-      child.on("close", (code) => {
-        clearTimeout(killer);
-        resolve(code ?? -1);
+      const baseUrl = process.env.PQ_BASE_URL ?? "http://localhost:3000";
+      const browserName = req.browser ?? "chromium";
+      const configContent = buildPlaywrightConfig({
+        baseUrl,
+        browserName,
+        headless: true,
+        testDir: runDir,
+        testMatch: "player.spec.ts",
+        outputDir: join(runDir, "test-results"),
       });
-    });
+      const configPath = join(runDir, "playwright.config.js");
+      await writeFile(configPath, configContent, "utf8");
 
-    const durationMs = Date.now() - started;
-    const screenshotBase64 = await findFirstScreenshot(artifactsDir);
+      const child = spawn(
+        "npx",
+        [
+          "playwright", "test",
+          "--config", configPath,
+          "--project", browserName,
+          "--reporter=line",
+        ],
+        {
+          cwd: this.projectRoot,
+          shell: true,
+          env: {
+            ...process.env,
+            PQ_SITE: req.site,
+            CI: "1",
+          },
+        }
+      );
 
-    const passed = exitCode === 0;
-    const errorMessage = passed
-      ? undefined
-      : extractErrorMessage(stdout) || extractErrorMessage(stderr);
+      let stdout = "";
+      let stderr = "";
 
-    // Best-effort cleanup; don't fail the request if it errors.
-    rm(runDir, { recursive: true, force: true }).catch(() => {});
+      const handleChunk = (chunk: string) => {
+        if (req.onOutput) {
+          for (const line of chunk.split("\n")) {
+            if (line.trim()) req.onOutput(line);
+          }
+        }
+      };
 
-    return {
-      passed,
-      exitCode,
-      durationMs,
-      stdout,
-      stderr,
-      errorMessage,
-      screenshotBase64,
+      child.stdout.on("data", (b: Buffer) => {
+        const chunk = b.toString();
+        stdout += chunk;
+        handleChunk(chunk);
+      });
+      child.stderr.on("data", (b: Buffer) => {
+        const chunk = b.toString();
+        stderr += chunk;
+        handleChunk(chunk);
+      });
+
+      const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+      const exitCode = await new Promise<number>((resolve) => {
+        const killer = setTimeout(() => {
+          child.kill("SIGKILL");
+        }, timeoutMs + 5_000);
+        child.on("close", (code) => {
+          clearTimeout(killer);
+          resolve(code ?? -1);
+        });
+      });
+
+      const durationMs = Date.now() - started;
+
+      // Copy trace and video to persistent storage before runDir cleanup.
+      let savedRunId: string | undefined;
+      try {
+        const traceZip = await findFirstFile(runDir, ".zip");
+        if (traceZip) {
+          const traceDest = join(tracesRoot, runId);
+          await mkdir(traceDest, { recursive: true });
+          await copyFile(traceZip, join(traceDest, "trace.zip"));
+          savedRunId = runId;
+          const videoWebm = await findFirstFile(runDir, ".webm");
+          if (videoWebm) {
+            await copyFile(videoWebm, join(traceDest, "video.webm"));
+          }
+        }
+      } catch {
+        // Trace copy failure must not fail the run.
+      }
+
+      const screenshotBase64 = await findFirstScreenshot(join(runDir, "test-results"));
+      const passed = exitCode === 0;
+      const errorMessage = passed
+        ? undefined
+        : extractErrorMessage(stdout) || extractErrorMessage(stderr);
+
+      return {
+        passed,
+        exitCode,
+        durationMs,
+        stdout,
+        stderr,
+        errorMessage,
+        screenshotBase64,
+        runId: savedRunId,
+      };
+    } finally {
+      rm(runDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+}
+
+async function findFirstFile(dir: string, ext: string): Promise<string | undefined> {
+  try {
+    const { readdir } = await import("node:fs/promises");
+    const walk = async (d: string): Promise<string[]> => {
+      const entries = await readdir(d, { withFileTypes: true });
+      const out: string[] = [];
+      for (const e of entries) {
+        const p = join(d, e.name);
+        if (e.isDirectory()) out.push(...(await walk(p)));
+        else if (e.name.endsWith(ext)) out.push(p);
+      }
+      return out;
     };
+    const candidates = await walk(dir);
+    return candidates[0];
+  } catch {
+    return undefined;
   }
 }
 
@@ -113,28 +161,14 @@ async function findFirstScreenshot(dir: string): Promise<string | undefined> {
   } catch {
     return undefined;
   }
-
-  const { readdir } = await import("node:fs/promises");
-  let candidates: string[];
+  const path = await findFirstFile(dir, ".png");
+  if (!path) return undefined;
   try {
-    const walk = async (d: string): Promise<string[]> => {
-      const entries = await readdir(d, { withFileTypes: true });
-      const out: string[] = [];
-      for (const e of entries) {
-        const p = join(d, e.name);
-        if (e.isDirectory()) out.push(...(await walk(p)));
-        else if (e.name.endsWith(".png")) out.push(p);
-      }
-      return out;
-    };
-    candidates = await walk(dir);
+    const buf = await readFile(path);
+    return buf.toString("base64");
   } catch {
     return undefined;
   }
-
-  if (candidates.length === 0) return undefined;
-  const buf = await readFile(candidates[0]);
-  return buf.toString("base64");
 }
 
 function extractErrorMessage(output: string): string | undefined {

@@ -1,0 +1,488 @@
+{
+  "site": "thornfield",
+  "version": "1.0.0",
+  "base_url": "/sites/thornfield",
+  "pages": {
+    "home": "/sites/thornfield/index.html",
+    "contact": "/sites/thornfield/contact.html",
+    "services": "/sites/thornfield/services.html"
+  },
+  "elements": [
+    {
+      "id": "nav-home",
+      "description": "Main navigation link to the Home page",
+      "element_type": "link",
+      "page": "home",
+      "ideal_locator": "getByRole('link', { name: 'Home' })",
+      "acceptable_locators": [
+        "locator('nav a[href=\"index.html\"]').first()"
+      ],
+      "brittle_locators": [
+        "locator('nav ul li:first-child a')"
+      ],
+      "aria_notes": "Link text is exactly 'Home'. Multiple pages have this nav; on the home page it also has aria-current='page'.",
+      "intentional_traps": [],
+      "challenge_hooks": ["navigation"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "nav-services",
+      "description": "Main navigation link to the Services page",
+      "element_type": "link",
+      "page": "all",
+      "ideal_locator": "getByRole('link', { name: 'Services' })",
+      "acceptable_locators": [
+        "locator('nav a[href=\"services.html\"]')"
+      ],
+      "brittle_locators": [
+        "locator('nav ul li:nth-child(2) a')"
+      ],
+      "aria_notes": "Link text is exactly 'Services'.",
+      "intentional_traps": [],
+      "challenge_hooks": ["navigation"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "nav-contact",
+      "description": "Main navigation link to the Contact page",
+      "element_type": "link",
+      "page": "all",
+      "ideal_locator": "getByRole('link', { name: 'Contact' })",
+      "acceptable_locators": [
+        "locator('nav a[href=\"contact.html\"]')"
+      ],
+      "brittle_locators": [
+        "locator('nav ul li:last-child a')"
+      ],
+      "aria_notes": "Link text is exactly 'Contact'.",
+      "intentional_traps": [],
+      "challenge_hooks": ["navigation"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "hero-cta",
+      "description": "Primary CTA button on the homepage hero section linking to contact.html",
+      "element_type": "link",
+      "page": "home",
+      "ideal_locator": "getByRole('link', { name: 'Get in touch' })",
+      "acceptable_locators": [
+        "locator('a.btn-primary')"
+      ],
+      "brittle_locators": [
+        "locator('.hero a')",
+        "locator('a[href=\"contact.html\"]')"
+      ],
+      "aria_notes": "Visually styled as a button but semantically an <a> link. getByRole('link') is correct; getByRole('button') will not find it.",
+      "intentional_traps": ["button_vs_link_trap"],
+      "challenge_hooks": ["hero_interaction", "navigation"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "service-card-strategy-link",
+      "description": "Learn more link on the Strategy service card",
+      "element_type": "link",
+      "page": "home",
+      "ideal_locator": "getByRole('link', { name: 'Learn more →' }).first()",
+      "acceptable_locators": [
+        "locator('a[href=\"services.html#strategy\"]')"
+      ],
+      "brittle_locators": [
+        "locator('.service-card:first-child a')"
+      ],
+      "aria_notes": "All three 'Learn more →' links have identical visible text. Must disambiguate by position or scope within the parent article.",
+      "intentional_traps": ["duplicate_accessible_name_trap"],
+      "challenge_hooks": ["navigation", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "service-card-technology-link",
+      "description": "Learn more link on the Technology service card",
+      "element_type": "link",
+      "page": "home",
+      "ideal_locator": "getByRole('article').filter({ hasText: 'Technology' }).getByRole('link', { name: 'Learn more →' })",
+      "acceptable_locators": [
+        "locator('a[href=\"services.html#technology\"]')"
+      ],
+      "brittle_locators": [
+        "locator('.service-card:nth-child(2) a')"
+      ],
+      "aria_notes": "Filtering by article containing 'Technology' text is the robust approach when link text is duplicated.",
+      "intentional_traps": ["duplicate_accessible_name_trap"],
+      "challenge_hooks": ["navigation", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "service-card-operations-link",
+      "description": "Learn more link on the Operations service card",
+      "element_type": "link",
+      "page": "home",
+      "ideal_locator": "getByRole('article').filter({ hasText: 'Operations' }).getByRole('link', { name: 'Learn more →' })",
+      "acceptable_locators": [
+        "locator('a[href=\"services.html#operations\"]')"
+      ],
+      "brittle_locators": [
+        "locator('.service-card:nth-child(3) a')"
+      ],
+      "aria_notes": "Same duplicate text trap as strategy and technology links.",
+      "intentional_traps": ["duplicate_accessible_name_trap"],
+      "challenge_hooks": ["navigation", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "contact-full-name",
+      "description": "Full name input on the contact form",
+      "element_type": "input",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Full name')",
+      "acceptable_locators": [
+        "getByRole('textbox', { name: 'Full name' })",
+        "locator('#full-name')"
+      ],
+      "brittle_locators": [
+        "locator('input[name=\"full-name\"]')",
+        "locator('input:first-of-type')"
+      ],
+      "aria_notes": "Has explicit <label for='full-name'>. getByLabel matches the label text exactly.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_fill", "getByLabel"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-work-email",
+      "description": "Work email input on the contact form",
+      "element_type": "input",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Work email')",
+      "acceptable_locators": [
+        "getByRole('textbox', { name: 'Work email' })",
+        "locator('#work-email')"
+      ],
+      "brittle_locators": [
+        "locator('input[type=\"email\"]')"
+      ],
+      "aria_notes": "Has explicit <label for='work-email'>. type='email' means it may not match getByRole('textbox') in all Playwright versions — getByLabel is safer.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_fill", "getByLabel"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-company",
+      "description": "Company input on the contact form",
+      "element_type": "input",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Company')",
+      "acceptable_locators": [
+        "getByRole('textbox', { name: 'Company' })",
+        "locator('#company')"
+      ],
+      "brittle_locators": [
+        "locator('input[name=\"company\"]')"
+      ],
+      "aria_notes": "Has explicit <label for='company'>.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_fill", "getByLabel"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-phone",
+      "description": "Phone input on the contact form — optional, no required attribute",
+      "element_type": "input",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Phone')",
+      "acceptable_locators": [
+        "locator('#phone')"
+      ],
+      "brittle_locators": [
+        "locator('input[type=\"tel\"]')"
+      ],
+      "aria_notes": "Has label text 'Phone (optional)'. getByLabel('Phone') matches because it does a substring check by default.",
+      "intentional_traps": [
+        "optional_field_trap: no required attribute — asserting toHaveValue on an unfilled phone field returns '' not an error"
+      ],
+      "challenge_hooks": ["form_fill", "optional_field"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "contact-service-interest",
+      "description": "Service interest select/combobox on the contact form",
+      "element_type": "select",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Service interest')",
+      "acceptable_locators": [
+        "getByRole('combobox', { name: 'Service interest' })",
+        "locator('#service-interest')"
+      ],
+      "brittle_locators": [
+        "locator('select')",
+        "locator('select[name=\"service-interest\"]')"
+      ],
+      "aria_notes": "First option has value='' and text 'Select a service…'. Players must call selectOption() explicitly; the default value is empty string.",
+      "intentional_traps": [
+        "empty_default_option_trap: default value is '' not a service name — asserting toHaveValue without selecting will fail"
+      ],
+      "challenge_hooks": ["form_fill", "select_option", "combobox"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-message",
+      "description": "Message textarea on the contact form",
+      "element_type": "textarea",
+      "page": "contact",
+      "ideal_locator": "getByLabel('Message')",
+      "acceptable_locators": [
+        "locator('textarea')",
+        "locator('#message')"
+      ],
+      "brittle_locators": [
+        "locator('textarea[name=\"message\"]')"
+      ],
+      "aria_notes": "Has explicit <label for='message'>.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_fill", "getByLabel"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-submit",
+      "description": "Submit button on the contact form",
+      "element_type": "button",
+      "page": "contact",
+      "ideal_locator": "getByRole('button', { name: 'Send message' })",
+      "acceptable_locators": [
+        "locator('button[type=\"submit\"]')"
+      ],
+      "brittle_locators": [
+        "locator('.btn-primary')",
+        "locator('form button')"
+      ],
+      "aria_notes": "type='submit'. Accessible name is 'Send message'.",
+      "intentional_traps": [],
+      "challenge_hooks": ["form_submit"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "contact-confirmation",
+      "description": "Confirmation alert shown after successful form submission",
+      "element_type": "alert",
+      "page": "contact",
+      "ideal_locator": "getByRole('alert')",
+      "acceptable_locators": [
+        "locator('#contact-confirmation')"
+      ],
+      "brittle_locators": [
+        "locator('.confirmation')"
+      ],
+      "aria_notes": "role='alert' with aria-live='polite'. Only becomes visible after form submission (display:none → visible class). toBeVisible() assertion is correct.",
+      "intentional_traps": [],
+      "challenge_hooks": ["confirmation_assertion", "aria_live"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "services-strategy-consult-btn",
+      "description": "Request a consultation button in the Strategy section on the services page",
+      "element_type": "button",
+      "page": "services",
+      "ideal_locator": "page.locator('#strategy').getByRole('button', { name: 'Request a consultation' })",
+      "acceptable_locators": [
+        "locator('button[data-service=\"strategy\"]')"
+      ],
+      "brittle_locators": [
+        "getByRole('button', { name: 'Request a consultation' }).first()"
+      ],
+      "aria_notes": "aria-haspopup='dialog'. Three buttons share the same label — must scope to the section by id.",
+      "intentional_traps": [
+        "duplicate_button_name_trap: three buttons with identical text, must scope to #strategy section"
+      ],
+      "challenge_hooks": ["modal_trigger", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "services-technology-consult-btn",
+      "description": "Request a consultation button in the Technology section on the services page",
+      "element_type": "button",
+      "page": "services",
+      "ideal_locator": "page.locator('#technology').getByRole('button', { name: 'Request a consultation' })",
+      "acceptable_locators": [
+        "locator('button[data-service=\"technology\"]')"
+      ],
+      "brittle_locators": [
+        "getByRole('button', { name: 'Request a consultation' }).nth(1)"
+      ],
+      "aria_notes": "aria-haspopup='dialog'. Must scope to #technology to be unambiguous.",
+      "intentional_traps": [
+        "duplicate_button_name_trap: three buttons with identical text, must scope to #technology section"
+      ],
+      "challenge_hooks": ["modal_trigger", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "services-operations-consult-btn",
+      "description": "Request a consultation button in the Operations section on the services page",
+      "element_type": "button",
+      "page": "services",
+      "ideal_locator": "page.locator('#operations').getByRole('button', { name: 'Request a consultation' })",
+      "acceptable_locators": [
+        "locator('button[data-service=\"operations\"]')"
+      ],
+      "brittle_locators": [
+        "getByRole('button', { name: 'Request a consultation' }).nth(2)"
+      ],
+      "aria_notes": "aria-haspopup='dialog'. Must scope to #operations to be unambiguous.",
+      "intentional_traps": [
+        "duplicate_button_name_trap: three buttons with identical text, must scope to #operations section"
+      ],
+      "challenge_hooks": ["modal_trigger", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-strategy-dialog",
+      "description": "Modal dialog for requesting a Strategy consultation",
+      "element_type": "dialog",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: 'Request a Strategy Consultation' })",
+      "acceptable_locators": [
+        "locator('#modal-strategy-inner')"
+      ],
+      "brittle_locators": [
+        "locator('.modal').first()",
+        "locator('[role=\"dialog\"]').first()"
+      ],
+      "aria_notes": "role='dialog', aria-modal='true', aria-labelledby='modal-strategy-title'. The accessible name is derived from the heading via aria-labelledby.",
+      "intentional_traps": [
+        "aria_labelledby_trap: dialog accessible name comes from the heading id, not inner text — getByRole('dialog', { name: 'Request a Strategy Consultation' }) is the canonical locator"
+      ],
+      "challenge_hooks": ["modal_dialog", "aria_labelledby"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-technology-dialog",
+      "description": "Modal dialog for requesting a Technology consultation",
+      "element_type": "dialog",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: 'Request a Technology Consultation' })",
+      "acceptable_locators": [
+        "locator('#modal-technology-inner')"
+      ],
+      "brittle_locators": [
+        "locator('[role=\"dialog\"]').nth(1)"
+      ],
+      "aria_notes": "role='dialog', aria-modal='true', aria-labelledby='modal-technology-title'.",
+      "intentional_traps": [
+        "aria_labelledby_trap: must use { name: 'Request a Technology Consultation' } to distinguish from other dialogs"
+      ],
+      "challenge_hooks": ["modal_dialog", "aria_labelledby"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-operations-dialog",
+      "description": "Modal dialog for requesting an Operations consultation",
+      "element_type": "dialog",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: 'Request an Operations Consultation' })",
+      "acceptable_locators": [
+        "locator('#modal-operations-inner')"
+      ],
+      "brittle_locators": [
+        "locator('[role=\"dialog\"]').nth(2)"
+      ],
+      "aria_notes": "role='dialog', aria-modal='true', aria-labelledby='modal-operations-title'.",
+      "intentional_traps": [
+        "aria_labelledby_trap: note 'an' not 'a' in the heading — 'Request an Operations Consultation'"
+      ],
+      "challenge_hooks": ["modal_dialog", "aria_labelledby"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-close-btn",
+      "description": "Close button inside any Thornfield modal dialog",
+      "element_type": "button",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: '...' }).getByRole('button', { name: 'Close dialog' })",
+      "acceptable_locators": [
+        "locator('.modal-close')"
+      ],
+      "brittle_locators": [
+        "locator('button:has-text(\"×\")')"
+      ],
+      "aria_notes": "aria-label='Close dialog'. Visible text is '×' (multiplication sign) which is unreliable as a locator; use aria-label.",
+      "intentional_traps": [
+        "icon_button_trap: visible text is '×' not 'Close' — must use aria-label"
+      ],
+      "challenge_hooks": ["modal_dialog", "icon_button"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-name-input",
+      "description": "Name input inside a modal dialog",
+      "element_type": "input",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: '...' }).getByLabel('Your name')",
+      "acceptable_locators": [
+        "locator('#modal-technology-name')"
+      ],
+      "brittle_locators": [
+        "locator('.modal input[type=\"text\"]')"
+      ],
+      "aria_notes": "Label text is 'Your name' (different from contact form 'Full name'). Must scope to the dialog to avoid ambiguity when multiple dialogs are in DOM.",
+      "intentional_traps": [
+        "scoping_trap: all three modals are in the DOM simultaneously — must scope locator to the open dialog"
+      ],
+      "challenge_hooks": ["modal_dialog", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-email-input",
+      "description": "Email input inside a modal dialog",
+      "element_type": "input",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: '...' }).getByLabel('Your email')",
+      "acceptable_locators": [
+        "locator('#modal-technology-email')"
+      ],
+      "brittle_locators": [
+        "locator('.modal input[type=\"email\"]')"
+      ],
+      "aria_notes": "Label text is 'Your email'. All three modal email inputs are in the DOM simultaneously — must scope to the open dialog.",
+      "intentional_traps": [
+        "scoping_trap: must scope to open dialog, otherwise locator matches three hidden inputs"
+      ],
+      "challenge_hooks": ["modal_dialog", "scoped_locator"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-submit-btn",
+      "description": "Submit request button inside a modal dialog",
+      "element_type": "button",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: '...' }).getByRole('button', { name: 'Submit request' })",
+      "acceptable_locators": [
+        "locator('#modal-technology-form button[type=\"submit\"]')"
+      ],
+      "brittle_locators": [
+        "locator('.modal .btn-primary')"
+      ],
+      "aria_notes": "type='submit', text 'Submit request'. Must scope to dialog to avoid matching other modal submit buttons.",
+      "intentional_traps": [],
+      "challenge_hooks": ["modal_dialog", "form_submit"],
+      "difficulty": "intermediate"
+    },
+    {
+      "id": "modal-confirmation",
+      "description": "Confirmation alert shown after submitting a modal form",
+      "element_type": "alert",
+      "page": "services",
+      "ideal_locator": "getByRole('dialog', { name: '...' }).getByRole('alert')",
+      "acceptable_locators": [
+        "locator('#modal-technology-confirmation')"
+      ],
+      "brittle_locators": [
+        "locator('.modal-confirmation.visible')"
+      ],
+      "aria_notes": "role='alert' scoped inside the dialog. All three are in DOM; must scope to the correct dialog.",
+      "intentional_traps": [
+        "scoping_trap: multiple role='alert' elements in DOM — must scope to open dialog"
+      ],
+      "challenge_hooks": ["modal_dialog", "confirmation_assertion"],
+      "difficulty": "intermediate"
+    }
+  ]
+}

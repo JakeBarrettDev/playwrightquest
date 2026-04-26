@@ -1,0 +1,35 @@
+{
+  "id": "thornfield-contact-form",
+  "title": "Submit the Contact Form",
+  "site": "thornfield",
+  "difficulty": "beginner",
+  "clientBrief": "Thornfield & Associates need automated tests for their contact form. A prospective client should be able to fill in their details, select a service, and submit the form — and see a confirmation message.",
+  "acceptanceCriteria": [
+    "Given I am on the Thornfield contact page",
+    "When I fill in all required fields with valid data",
+    "And I select a service from the dropdown",
+    "And I click the Send message button",
+    "Then a confirmation message should be visible"
+  ],
+  "manifestElements": [
+    "contact-full-name",
+    "contact-work-email",
+    "contact-company",
+    "contact-service-interest",
+    "contact-message",
+    "contact-submit",
+    "contact-confirmation"
+  ],
+  "tags": ["form", "select", "combobox", "confirmation", "getByLabel", "getByRole"],
+  "suggestedPlaywrightAPIs": [
+    "page.getByLabel()",
+    "page.getByRole()",
+    "locator.fill()",
+    "locator.selectOption()",
+    "locator.click()",
+    "expect(locator).toBeVisible()"
+  ],
+  "startingCode": "import { test, expect } from '@playwright/test';\n\ntest('contact form submission shows confirmation', async ({ page }) => {\n  await page.goto('/sites/thornfield/contact.html');\n  \n  // Fill in the required fields\n  \n  // Select a service\n  \n  // Submit the form\n  \n  // Assert the confirmation is visible\n});\n",
+  "xpReward": 120,
+  "hintPenalty": 10
+}

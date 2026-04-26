@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Services — Thornfield &amp; Associates</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Thornfield <span>&amp;</span> Associates</a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html" aria-current="page">Services</a></li>
+          <li><a href="index.html#team">Team</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-hero">
+      <div class="container">
+        <h1>Our Services</h1>
+        <p>Three practice areas. One integrated approach.</p>
+      </div>
+    </div>
+
+    <div class="services-detail">
+      <div class="container">
+
+        <section id="strategy" class="service-detail-section" aria-labelledby="strategy-heading">
+          <h2 id="strategy-heading">Strategy</h2>
+          <p>
+            Our strategy practice helps leadership teams cut through uncertainty and make confident decisions.
+            We specialise in market entry analysis, portfolio rationalisation, competitive positioning,
+            and long-range scenario planning. Our work is grounded in primary research and informed by
+            decades of hands-on experience across sectors.
+          </p>
+          <p>
+            Whether you are entering a new geography, rethinking your product portfolio, or preparing for
+            a transaction, our strategy team will give you the analytical rigour and practical judgement
+            you need to act decisively.
+          </p>
+          <button
+            type="button"
+            class="btn-primary"
+            data-service="strategy"
+            aria-haspopup="dialog"
+            onclick="openModal('strategy')"
+          >
+            Request a consultation
+          </button>
+        </section>
+
+        <section id="technology" class="service-detail-section" aria-labelledby="technology-heading">
+          <h2 id="technology-heading">Technology</h2>
+          <p>
+            Our technology practice helps organisations make smarter technology decisions — and fix the
+            expensive ones they've already made. We conduct architecture reviews, technology due diligence
+            for M&amp;A transactions, and end-to-end digital transformation programmes.
+          </p>
+          <p>
+            We are vendor-agnostic and deeply sceptical of buzzwords. Our practitioners have built and
+            shipped real systems at scale, which means our advice is grounded in what actually works.
+          </p>
+          <button
+            type="button"
+            class="btn-primary"
+            data-service="technology"
+            aria-haspopup="dialog"
+            onclick="openModal('technology')"
+          >
+            Request a consultation
+          </button>
+        </section>
+
+        <section id="operations" class="service-detail-section" aria-labelledby="operations-heading">
+          <h2 id="operations-heading">Operations</h2>
+          <p>
+            Our operations practice drives measurable performance improvement across the processes that
+            matter most to your business. From supply chain redesign to shared services transformation,
+            we combine lean methodology with deep sector knowledge to deliver sustainable change.
+          </p>
+          <p>
+            Our clients typically achieve 15–30% cost reduction and significant improvements in
+            throughput and quality within twelve to eighteen months of engagement.
+          </p>
+          <button
+            type="button"
+            class="btn-primary"
+            data-service="operations"
+            aria-haspopup="dialog"
+            onclick="openModal('operations')"
+          >
+            Request a consultation
+          </button>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© 2024 Thornfield &amp; Associates. All rights reserved.</p>
+      <address style="font-style:normal">
+        22 Aldgate Square, London EC3N 1AA &nbsp;·&nbsp; <a href="mailto:hello@thornfield.example" style="color:inherit">hello@thornfield.example</a>
+      </address>
+    </div>
+  </footer>
+
+  <!-- Modals -->
+
+  <!-- Strategy modal -->
+  <!-- Intentional trap: modal has aria-labelledby pointing to the dialog heading.
+       Players who try to find the modal by text inside it rather than by role/name will struggle.
+       Correct approach: page.getByRole('dialog', { name: 'Request a Strategy Consultation' }) -->
+  <div
+    id="modal-strategy"
+    class="modal-overlay"
+    role="presentation"
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-strategy-title"
+      tabindex="-1"
+      id="modal-strategy-inner"
+    >
+      <div class="modal">
+        <h2 id="modal-strategy-title">Request a Strategy Consultation</h2>
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close dialog"
+          onclick="closeModal('strategy')"
+        >×</button>
+        <form id="modal-strategy-form">
+          <input type="hidden" name="service" value="strategy" />
+          <div class="form-group">
+            <label for="modal-strategy-name">Your name</label>
+            <input type="text" id="modal-strategy-name" name="name" required placeholder="Jane Smith" />
+          </div>
+          <div class="form-group">
+            <label for="modal-strategy-email">Your email</label>
+            <input type="email" id="modal-strategy-email" name="email" required placeholder="jane@company.com" />
+          </div>
+          <button type="submit" class="btn-primary">Submit request</button>
+        </form>
+        <div
+          id="modal-strategy-confirmation"
+          class="modal-confirmation"
+          role="alert"
+        >
+          Thank you — a member of our strategy team will be in touch shortly.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Technology modal -->
+  <div
+    id="modal-technology"
+    class="modal-overlay"
+    role="presentation"
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-technology-title"
+      tabindex="-1"
+      id="modal-technology-inner"
+    >
+      <div class="modal">
+        <h2 id="modal-technology-title">Request a Technology Consultation</h2>
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close dialog"
+          onclick="closeModal('technology')"
+        >×</button>
+        <form id="modal-technology-form">
+          <input type="hidden" name="service" value="technology" />
+          <div class="form-group">
+            <label for="modal-technology-name">Your name</label>
+            <input type="text" id="modal-technology-name" name="name" required placeholder="Jane Smith" />
+          </div>
+          <div class="form-group">
+            <label for="modal-technology-email">Your email</label>
+            <input type="email" id="modal-technology-email" name="email" required placeholder="jane@company.com" />
+          </div>
+          <button type="submit" class="btn-primary">Submit request</button>
+        </form>
+        <div
+          id="modal-technology-confirmation"
+          class="modal-confirmation"
+          role="alert"
+        >
+          Thank you — a member of our technology team will be in touch shortly.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operations modal -->
+  <div
+    id="modal-operations"
+    class="modal-overlay"
+    role="presentation"
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-operations-title"
+      tabindex="-1"
+      id="modal-operations-inner"
+    >
+      <div class="modal">
+        <h2 id="modal-operations-title">Request an Operations Consultation</h2>
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close dialog"
+          onclick="closeModal('operations')"
+        >×</button>
+        <form id="modal-operations-form">
+          <input type="hidden" name="service" value="operations" />
+          <div class="form-group">
+            <label for="modal-operations-name">Your name</label>
+            <input type="text" id="modal-operations-name" name="name" required placeholder="Jane Smith" />
+          </div>
+          <div class="form-group">
+            <label for="modal-operations-email">Your email</label>
+            <input type="email" id="modal-operations-email" name="email" required placeholder="jane@company.com" />
+          </div>
+          <button type="submit" class="btn-primary">Submit request</button>
+        </form>
+        <div
+          id="modal-operations-confirmation"
+          class="modal-confirmation"
+          role="alert"
+        >
+          Thank you — a member of our operations team will be in touch shortly.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal(service) {
+      var overlay = document.getElementById('modal-' + service);
+      overlay.classList.add('open');
+      var inner = document.getElementById('modal-' + service + '-inner');
+      inner.focus();
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    function closeModal(service) {
+      var overlay = document.getElementById('modal-' + service);
+      overlay.classList.remove('open');
+      document.removeEventListener('keydown', handleEscape);
+    }
+
+    function handleEscape(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(function(el) {
+          var service = el.id.replace('modal-', '');
+          closeModal(service);
+        });
+      }
+    }
+
+    ['strategy', 'technology', 'operations'].forEach(function(service) {
+      var form = document.getElementById('modal-' + service + '-form');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        this.style.display = 'none';
+        var confirmation = document.getElementById('modal-' + service + '-confirmation');
+        confirmation.classList.add('visible');
+      });
+    });
+  </script>
+
+</body>
+</html>

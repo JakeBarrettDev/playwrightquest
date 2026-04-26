@@ -1,0 +1,33 @@
+{
+  "id": "thornfield-services-modal",
+  "title": "Open and Submit a Service Modal",
+  "site": "thornfield",
+  "difficulty": "intermediate",
+  "clientBrief": "The services page has consultation request modals. Test that clicking 'Request a consultation' on the Technology service opens the correct modal and allows submission.",
+  "acceptanceCriteria": [
+    "Given I am on the Thornfield services page",
+    "When I click the Request a consultation button for the Technology service",
+    "Then a dialog should open",
+    "When I fill in my name and email",
+    "And I submit the dialog form",
+    "Then the confirmation message should be visible"
+  ],
+  "manifestElements": [
+    "services-technology-consult-btn",
+    "modal-technology-dialog",
+    "modal-name-input",
+    "modal-email-input",
+    "modal-submit-btn",
+    "modal-confirmation"
+  ],
+  "tags": ["modal", "dialog", "aria-modal", "getByRole", "intermediate"],
+  "suggestedPlaywrightAPIs": [
+    "page.getByRole('dialog')",
+    "locator.getByRole()",
+    "expect(locator).toBeVisible()",
+    "page.getByRole('button', { name })"
+  ],
+  "startingCode": "import { test, expect } from '@playwright/test';\n\ntest('technology service modal can be submitted', async ({ page }) => {\n  await page.goto('/sites/thornfield/services.html');\n  \n  // Open the Technology consultation modal\n  \n  // Assert the dialog is open\n  \n  // Fill in the form inside the dialog\n  \n  // Submit and verify confirmation\n});\n",
+  "xpReward": 150,
+  "hintPenalty": 15
+}
