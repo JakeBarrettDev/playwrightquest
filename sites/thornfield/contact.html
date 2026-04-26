@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact — Thornfield &amp; Associates</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Thornfield <span>&amp;</span> Associates</a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="index.html#team">Team</a></li>
+          <li><a href="contact.html" aria-current="page">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-hero">
+      <div class="container">
+        <h1>Contact Us</h1>
+        <p>We respond to all enquiries within one business day.</p>
+      </div>
+    </div>
+
+    <section class="contact-section">
+      <div class="container">
+        <div class="contact-form-wrap">
+
+          <form id="contact-form" novalidate>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="full-name">Full name</label>
+                <input
+                  type="text"
+                  id="full-name"
+                  name="full-name"
+                  autocomplete="name"
+                  required
+                  placeholder="Jane Smith"
+                />
+              </div>
+              <div class="form-group">
+                <label for="work-email">Work email</label>
+                <input
+                  type="email"
+                  id="work-email"
+                  name="work-email"
+                  autocomplete="email"
+                  required
+                  placeholder="jane@company.com"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="company">Company</label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  autocomplete="organization"
+                  required
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div class="form-group">
+                <!-- Intentional trap: optional field, no required attribute.
+                     Players who assert on this without checking may get false positives. -->
+                <label for="phone">Phone <span class="optional">(optional)</span></label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  autocomplete="tel"
+                  placeholder="+44 20 0000 0000"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <!-- Intentional trap: first option is empty ("Select a service…").
+                   Players who don't explicitly selectOption and then assert toHaveValue
+                   will get the empty string. -->
+              <label for="service-interest">Service interest</label>
+              <select id="service-interest" name="service-interest" required>
+                <option value="">Select a service…</option>
+                <option value="strategy">Strategy</option>
+                <option value="technology">Technology</option>
+                <option value="operations">Operations</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="message">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                required
+                placeholder="Tell us briefly about your challenge or enquiry…"
+              ></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary">Send message</button>
+          </form>
+
+          <div
+            id="contact-confirmation"
+            class="confirmation"
+            role="alert"
+            aria-live="polite"
+          >
+            Thank you, we'll be in touch within one business day.
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© 2024 Thornfield &amp; Associates. All rights reserved.</p>
+      <address style="font-style:normal">
+        22 Aldgate Square, London EC3N 1AA &nbsp;·&nbsp; <a href="mailto:hello@thornfield.example" style="color:inherit">hello@thornfield.example</a>
+      </address>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('contact-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      this.style.display = 'none';
+      var confirmation = document.getElementById('contact-confirmation');
+      confirmation.classList.add('visible');
+    });
+  </script>
+
+</body>
+</html>

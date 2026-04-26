@@ -74,3 +74,12 @@ Required fields:
 - `feedback.bestPracticeNotes: string[]` — 1–4 educational callouts that generalize beyond this specific test.
 - `hintsUsed: number` — echo the value from the request.
 - `xpAwarded: number` — computed as: `Math.round(score * xpReward / 100) - (hintsUsed * hintPenalty)`, clamped at 0.
+
+## Hint generation
+
+When asked for a hint (rather than a full grade), return a single paragraph of 2–3 sentences maximum. The hint should:
+- Point the player toward the right API or concept without revealing the exact solution
+- Reference a specific doc section they should read
+- Never write the code for them
+
+Return plain text, not JSON.

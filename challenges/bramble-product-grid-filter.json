@@ -1,0 +1,25 @@
+{
+  "id": "bramble-product-grid-filter",
+  "title": "Filter the Product Grid",
+  "site": "bramble-co",
+  "difficulty": "beginner",
+  "clientBrief": "QA has asked you to verify the category filter on the Bramble & Co. shop page. When a customer checks the 'Planters' filter, only planter products should be visible. Verify this works correctly.",
+  "acceptanceCriteria": [
+    "Given I am on the Bramble & Co. shop page",
+    "When I check the 'Planters' category filter",
+    "Then only products in the Planters category should be visible",
+    "And products in other categories should be hidden"
+  ],
+  "manifestElements": ["category-filter-planters", "product-grid", "product-card"],
+  "tags": ["filter", "checkbox", "visibility", "dynamic_class", "getByLabel"],
+  "suggestedPlaywrightAPIs": [
+    "page.getByLabel()",
+    "locator.check()",
+    "expect(locator).toBeVisible()",
+    "expect(locator).toBeHidden()",
+    "expect(locator).toHaveCount()"
+  ],
+  "startingCode": "import { test, expect } from '@playwright/test';\n\ntest('product grid filters by category', async ({ page }) => {\n  await page.goto('/');\n  \n  // Check the Planters filter\n  \n  // Assert that only planter products are visible\n  \n  // Assert that non-planter products are hidden\n});\n",
+  "xpReward": 100,
+  "hintPenalty": 10
+}

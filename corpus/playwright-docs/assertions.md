@@ -53,3 +53,42 @@ If a button text changes between states (e.g. `Submit` → `Processing...` → d
 await page.getByRole('button', { name: 'Complete Purchase' }).click();
 await expect(page.getByRole('heading', { name: 'Order Confirmed' })).toBeVisible();
 ```
+
+## Additional web-first assertions
+
+These are part of the same auto-retrying family as `toBeVisible` and `toHaveText`.
+Include them in the corpus so the grader can cite them when players use or misuse them.
+
+| Assertion | Use for |
+|-----------|---------|
+| `toHaveAttribute(name, value)` | Check an element attribute (href, src, aria-*, data-*) |
+| `toBeChecked()` | Checkbox or radio is in checked state |
+| `toBeInViewport()` | Element is visible within the viewport (not just in the DOM) |
+| `toHaveClass(className)` | Element has a specific CSS class |
+| `toHaveCount(n)` | Locator resolves to exactly N elements |
+
+```ts
+// Attribute assertion — very common for links and data attributes
+await expect(page.getByRole('link', { name: 'View Cart' })).toHaveAttribute('href', '/cart.html');
+
+// Checked state
+await expect(page.getByLabel('Subscribe to newsletter')).toBeChecked();
+
+// Viewport visibility — stricter than toBeVisible
+await expect(page.getByRole('button', { name: 'Complete Purchase' })).toBeInViewport();
+```
+
+## Soft assertions — continue on failure
+
+`expect.soft()` marks a failure without stopping the test. The test continues running and
+all soft failures are reported at the end.
+
+```ts
+await expect.soft(page.getByRole('heading')).toHaveText('Order Confirmed');
+await expect.soft(page).toHaveURL(/\/success/);
+// Test continues even if the first assertion failed
+```
+
+Use soft assertions when you want to collect multiple failure signals in one run rather
+than stopping at the first. Overuse is a smell — if every assertion is soft, nothing is
+truly required.

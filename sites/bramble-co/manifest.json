@@ -232,6 +232,41 @@
       "intentional_traps": ["nondeterministic_text"],
       "challenge_hooks": ["regex_assertion", "dynamic_content"],
       "difficulty": "intermediate"
+    },
+    {
+      "id": "product-grid",
+      "description": "The product grid list that shows or hides cards based on active category filters",
+      "page": "home",
+      "ideal_locator": "locator('#product-grid')",
+      "acceptable_locators": [
+        "getByRole('list').filter({ has: locator('.product-card') })"
+      ],
+      "brittle_locators": [
+        "locator('ul.product-grid')",
+        "locator('section.products ul')"
+      ],
+      "aria_notes": "The <ul id='product-grid'> is the container. When a filter is active, non-matching <li> cards get a CSS class that hides them; the list itself is always present.",
+      "intentional_traps": [],
+      "challenge_hooks": ["filter_interaction", "visibility_assertion"],
+      "difficulty": "beginner"
+    },
+    {
+      "id": "product-card",
+      "description": "Individual product card list item within the product grid",
+      "page": "home",
+      "ideal_locator": "locator('.product-card')",
+      "acceptable_locators": [
+        "getByRole('listitem').filter({ has: locator('button.add-to-cart') })"
+      ],
+      "brittle_locators": [
+        "locator('#product-grid li')"
+      ],
+      "aria_notes": "Each <li class='product-card'> has a data-category attribute ('planters', 'tools', 'seeds'). When filtered, non-matching cards receive class 'hidden' and display:none. toBeHidden() and toBeVisible() are the right assertions.",
+      "intentional_traps": [
+        "hidden_class_trap: cards are hidden via CSS class, not removed from DOM — toBeHidden() correctly detects this, but checking count() will still return 6"
+      ],
+      "challenge_hooks": ["filter_interaction", "visibility_assertion"],
+      "difficulty": "beginner"
     }
   ]
 }
