@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1600, initial-scale=1" />
+<title>Playwright Stagecraft — Homepage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #0d1310; }
+  body { font-family: "Geist", system-ui, -apple-system, sans-serif; }
+  * { box-sizing: border-box; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="imageMask.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="theaterHomeV2.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "mood": "Opening Night",
+  "cast": "Ensemble",
+  "drama": "Theatrical"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  return (
+    <>
+      <DesignCanvas title="Playwright Stagecraft — Homepage" subtitle="Playful Theater · click masks, try ↑↑↓↓←→←→BA">
+        <DCSection id="home" title="Homepage" subtitle="Click the happy mask to wink. Click the sad mask to watch it hide. Move your mouse for parallax.">
+          <DCArtboard id="theater" label="Homepage — Playful Theater" width={1440} height={2000}>
+            <TheaterHomeV2 mood={t.mood} cast={t.cast} drama={t.drama} />
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="cast" title="Mask Cast" subtitle="One mood per feedback state. These are the tutor personas you'll meet across the app.">
+          <DCArtboard id="cast-sheet" label="Mood palette + roles" width={1440} height={760}>
+            <MaskCastSheet />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Mood — palette & footlight" />
+        <TweakRadio label="Mood" value={t.mood}
+          options={['Opening Night', 'Dress Rehearsal', 'Matinee']}
+          onChange={(v) => setTweak('mood', v)} />
+
+        <TweakSection label="Cast — who's on stage" />
+        <TweakRadio label="Cast" value={t.cast}
+          options={['Solo', 'Duo', 'Ensemble']}
+          onChange={(v) => setTweak('cast', v)} />
+
+        <TweakSection label="Drama — motion intensity" />
+        <TweakRadio label="Drama" value={t.drama}
+          options={['Calm', 'Lively', 'Theatrical']}
+          onChange={(v) => setTweak('drama', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+function MaskCastSheet() {
+  const cast = [
+    { m: 'happy',       role: 'Pass / Praise',      desc: 'Tests green. Selectors role-based. Assertions web-first. The standing ovation.' },
+    { m: 'happyLime',   role: 'Level Up',           desc: 'Milestones. Act unlocked, badge earned, streak intact.' },
+    { m: 'happyIcy',    role: 'Pro Tip',            desc: 'Calm, advanced nudges. Page Object Model, test.step, fixtures.' },
+    { m: 'sad',         role: 'Fail / Archaeology', desc: 'Brittle selectors, missing awaits, unasserted flows. Gentle failure.' },
+    { m: 'sadAqua',     role: 'Warning / Smell',    desc: 'Passing but smelly. Dynamic classes, nth(), timeouts in disguise.' },
+    { m: 'sadBlue',     role: 'Tutor',              desc: 'Guided hints. "Try this locator. Here is why it will survive a refactor."' },
+    { m: 'sadPink',     role: 'Nudge',              desc: 'Rubric whispers. You forgot to assert the post-condition.' },
+    { m: 'angry',       role: 'Hard Fail',          desc: 'Crashed test. Syntax error. Escape hatch too sharp. Re-read the script.' },
+  ];
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: 'linear-gradient(180deg, oklch(0.14 0.01 160), oklch(0.10 0.01 160))',
+      backgroundImage:
+        'linear-gradient(oklch(0.20 0.01 160 / 0.5) 1px, transparent 1px),' +
+        'linear-gradient(90deg, oklch(0.20 0.01 160 / 0.5) 1px, transparent 1px)',
+      backgroundSize: '48px 48px',
+      padding: '48px 56px',
+      color: 'oklch(0.95 0.02 80)',
+    }}>
+      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, letterSpacing: '0.16em', color: 'oklch(0.72 0.14 152)', textTransform: 'uppercase' }}>
+        // dramatis personae
+      </div>
+      <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 48, marginTop: 6, letterSpacing: '-0.01em' }}>
+        One face for every feedback moment
+      </div>
+      <p style={{ fontSize: 14, color: 'oklch(0.70 0.02 80)', maxWidth: 700, marginTop: 10, lineHeight: 1.5 }}>
+        The masks are your tutor cast. Color swaps map to severity and tone — the green family celebrates, the warmer reds critique, the blues coach, the pink whispers. Every grade pairs a mood with a message.
+      </p>
+      <div style={{
+        marginTop: 34, display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
+      }}>
+        {cast.map(c => (
+          <div key={c.m} style={{
+            background: 'oklch(0.16 0.01 160 / 0.8)',
+            border: '1px solid oklch(0.26 0.02 160)',
+            borderRadius: 14, padding: 20,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+            minHeight: 260,
+          }}>
+            <ImgMask mood={c.m} size={120} glow={true} tilt={c.m.startsWith('sad') || c.m === 'angry' ? -8 : 4} />
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, letterSpacing: '0.14em', color: 'oklch(0.72 0.14 152)', textTransform: 'uppercase', marginTop: 14 }}>
+              {c.m}
+            </div>
+            <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 22, marginTop: 4 }}>{c.role}</div>
+            <p style={{ fontSize: 12.5, color: 'oklch(0.74 0.02 80)', lineHeight: 1.5, marginTop: 8, textWrap: 'pretty' }}>
+              {c.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

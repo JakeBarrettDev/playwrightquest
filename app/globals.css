@@ -3,6 +3,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Stagecraft palette — OKLCH, perceptually-even */
+  --stage-bg-dark: oklch(0.09 0.01 160);
+  --stage-bg-mid: oklch(0.13 0.015 160);
+  --stage-bg-light: oklch(0.22 0.03 155);
+  --emerald: oklch(0.82 0.16 152);
+  --emerald-mid: oklch(0.72 0.14 152);
+  --emerald-deep: oklch(0.60 0.16 152);
+  --emerald-cta-start: oklch(0.74 0.17 152);
+  --text-primary: oklch(0.95 0.02 80);
+  --text-secondary: oklch(0.82 0.02 80);
+  --text-tertiary: oklch(0.60 0.02 80);
+  --bubble-bg: oklch(0.96 0.03 80);
+  --warm-glow: oklch(0.95 0.10 85 / 0.22);
 }
 
 @theme inline {
@@ -10,6 +24,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
+  --font-jetbrains: var(--font-jetbrains-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +38,43 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Stagecraft animations */
+@keyframes pq-float-happy {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-12px) rotate(0.6deg); }
+}
+@keyframes pq-float-sad {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(10px) rotate(-0.4deg); }
+}
+@keyframes pq-curtain-sway {
+  0%, 100% { transform: skewX(0deg) translateX(0); }
+  50%      { transform: skewX(0.4deg) translateX(2px); }
+}
+@keyframes pq-encore-in {
+  0%   { opacity: 0; transform: scale(0.6) translateY(20px); letter-spacing: 0.1em; }
+  60%  { opacity: 1; transform: scale(1.08) translateY(0); letter-spacing: 0.02em; }
+  100% { opacity: 1; transform: scale(1) translateY(0); letter-spacing: 0; }
+}
+@keyframes pq-encore-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 28px oklch(0.82 0.20 152 / 0.85),
+      0 0 60px oklch(0.72 0.22 152 / 0.55),
+      0 0 120px oklch(0.65 0.22 152 / 0.35);
+  }
+  50% {
+    text-shadow:
+      0 0 44px oklch(0.92 0.22 152 / 0.95),
+      0 0 96px oklch(0.82 0.24 152 / 0.7),
+      0 0 180px oklch(0.72 0.24 152 / 0.5);
+  }
+}
+@keyframes pq-encore-bloom {
+  0%   { opacity: 0; transform: scale(0.4); }
+  50%  { opacity: 0.9; }
+  100% { opacity: 0.5; transform: scale(1); }
 }
