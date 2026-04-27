@@ -26,7 +26,12 @@ export async function GET(
     const buffer = getResourceFromZip(zipPath, sha);
     if (!buffer) return new Response("Resource not found", { status: 404 });
 
-    return new Response(buffer, {
+    // Web `Response` wants `BodyInit`. Node `Buffer.buffer` may be typed as
+    // `ArrayBuffer | SharedArrayBuffer`; copy into a fresh ArrayBuffer so the
+    // type narrows and the runtime is a plain non-shared buffer.
+    const ab = new ArrayBuffer(buffer.byteLength);
+    new Uint8Array(ab).set(buffer);
+    return new Response(ab, {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600",

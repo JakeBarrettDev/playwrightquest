@@ -123,6 +123,15 @@ export function StageMasks({
   const showSad = cast !== "Solo";
   const showEnsemble = cast === "Ensemble";
 
+  // Snapshot ref values once per render. Refs (vs. state) avoid allocating a
+  // fresh array every animation frame; forceTick() schedules a render after
+  // each frame's integration so reads here are always fresh. React 19's
+  // react-hooks/refs rule flags this pattern — see the design handoff README
+  // ("Critical implementation detail — angle integration") for why this is
+  // the correct approach for the orbiting ensemble animation.
+  const orbitT = orbitTRef.current;
+  const angles = anglesRef.current;
+
   return (
     <div
       ref={ref}
@@ -163,11 +172,12 @@ export function StageMasks({
 
       {/* Ensemble — orbiting supporting cast */}
       {showEnsemble &&
+        // eslint-disable-next-line react-hooks/refs
         ENSEMBLE_CAST.map((c, i) => {
           const rx = c.ring === "inner" ? 285 : 360;
           const ry = c.ring === "inner" ? 170 : 220;
-          const isBoosted = (boost[i] ?? 0) > orbitTRef.current;
-          const angDeg = anglesRef.current[i];
+          const isBoosted = (boost[i] ?? 0) > orbitT;
+          const angDeg = angles[i];
           const ang = (angDeg * Math.PI) / 180;
           const x = Math.cos(ang) * rx;
           const y = Math.sin(ang) * ry;

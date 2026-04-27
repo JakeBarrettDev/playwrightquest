@@ -106,10 +106,15 @@ export default function Terminal({ challenge, code, onExecutionComplete }: Props
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep code and callbacks up-to-date in the closure via refs.
+  // Keep code and callbacks up-to-date in the closure via refs. The xterm
+  // setup effect runs once at mount and captures these refs; we mutate them
+  // when props change so the long-lived terminal callback always reads the
+  // latest values without re-creating the terminal instance.
   const codeRef = useRef(code);
   const onCompleteRef = useRef(onExecutionComplete);
+  // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { codeRef.current = code; }, [code]);
+  // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { onCompleteRef.current = onExecutionComplete; }, [onExecutionComplete]);
 
   return (

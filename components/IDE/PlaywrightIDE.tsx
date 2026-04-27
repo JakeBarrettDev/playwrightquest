@@ -11,6 +11,7 @@ import {
 } from "react";
 import { playwrightDts } from "./playwrightTypes";
 import { registerPlaywrightCompletions } from "./completions";
+import SitePreview, { type SitePreviewHandle } from "./SitePreview";
 import Terminal, { type TerminalCommand } from "./Terminal";
 import ChallengePanel from "@/components/Challenge/ChallengePanel";
 import FeedbackPanel, {
@@ -34,6 +35,7 @@ import type { GradeResponse } from "@/lib/types/grading";
 import type { AnnotatedComment } from "@/lib/trace/types";
 
 type BottomTab = "output" | "feedback" | "terminal";
+type RightTab = "challenge" | "preview";
 
 type ExecutionResultShape = ExecutionResult;
 
@@ -67,6 +69,52 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [hintText, setHintText] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
+
+  const [rightTab, setRightTab] = useState<RightTab>("challenge");
+  const [rightWidth, setRightWidth] = useState<number>(480);
+  const [isWide, setIsWide] = useState<boolean>(false);
+
+  useEffect(() => {
+    // One-shot hydration from localStorage (no SSR equivalent) and a
+    // matchMedia subscription. The setState calls inside this effect are
+    // intentional — they're hydrating client-only state, not reacting to it.
+    try {
+      const saved = window.localStorage.getItem("pq.rightPanelWidth");
+      if (saved) {
+        const n = Number.parseInt(saved, 10);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (Number.isFinite(n) && n > 200) setRightWidth(n);
+      }
+    } catch {
+      /* localStorage blocked — fine */
+    }
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsWide(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsWide(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const handleRightResize = useCallback((deltaX: number) => {
+    setRightWidth((w) => {
+      // Handle sits between editor (left) and right panel. Dragging LEFT
+      // (deltaX < 0) should GROW the right panel.
+      const next = w - deltaX;
+      const viewportW = window.innerWidth || 1600;
+      const min = 280;
+      const max = Math.max(min + 200, viewportW - 400);
+      const clamped = Math.min(max, Math.max(min, next));
+      try {
+        window.localStorage.setItem(
+          "pq.rightPanelWidth",
+          String(Math.round(clamped))
+        );
+      } catch {
+        /* ignore */
+      }
+      return clamped;
+    });
+  }, []);
 
   const tracePlayer = useTracePlayer();
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
@@ -338,7 +386,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
       />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {hintText && (
             <HintPanel
               hint={hintText}
@@ -805,6 +853,110 @@ function OutputView({
         </div>
       )}
     </div>
+  );
+}
+
+function ResizeHandle({ onDrag }: { onDrag: (deltaX: number) => void }) {
+  const draggingRef = useRef<{ lastX: number } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    draggingRef.current = { lastX: e.clientX };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = draggingRef.current;
+    if (!drag) return;
+    const delta = e.clientX - drag.lastX;
+    drag.lastX = e.clientX;
+    if (delta !== 0) onDrag(delta);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* pointer may already be released */
+    }
+    document.body.style.userSelect = "";
+    document.body.style.cursor = "";
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize right panel"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      className="hidden w-1.5 shrink-0 cursor-col-resize bg-zinc-900 transition-colors hover:bg-emerald-600 active:bg-emerald-500 lg:block"
+    />
+  );
+}
+
+function RightTabBar({
+  tab,
+  onTabChange,
+  onPreviewReload,
+}: {
+  tab: RightTab;
+  onTabChange: (t: RightTab) => void;
+  onPreviewReload: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 border-b border-zinc-800 bg-zinc-900 px-2 py-1.5">
+      <RightTabButton
+        active={tab === "challenge"}
+        onClick={() => onTabChange("challenge")}
+        label="Challenge"
+      />
+      <RightTabButton
+        active={tab === "preview"}
+        onClick={() => onTabChange("preview")}
+        label="Preview"
+      />
+      {tab === "preview" && (
+        <button
+          type="button"
+          onClick={onPreviewReload}
+          className="ml-auto rounded px-2 py-1 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          title="Reload preview to the site's starting state"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RightTabButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded px-2 py-1 text-xs ${
+        active
+          ? "bg-zinc-800 text-zinc-100"
+          : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

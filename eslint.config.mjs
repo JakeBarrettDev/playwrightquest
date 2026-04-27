@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference-only Babel-CDN prototypes from design handoffs — not real source.
+    "design_handoff_stagecraft_homepage/**",
   ]),
 ]);
 
