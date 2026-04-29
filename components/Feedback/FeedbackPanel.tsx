@@ -15,9 +15,15 @@ type State =
 interface Props {
   state: State;
   onJumpToLine?: (line: number) => void;
+  /** Hide the XP-awarded line until the post-mortem reveals it. Defaults to true. */
+  showXp?: boolean;
 }
 
-export default function FeedbackPanel({ state, onJumpToLine }: Props) {
+export default function FeedbackPanel({
+  state,
+  onJumpToLine,
+  showXp = true,
+}: Props) {
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 text-zinc-100">
       <div className="px-4 py-3">
@@ -46,6 +52,7 @@ export default function FeedbackPanel({ state, onJumpToLine }: Props) {
           <ResultView
             response={state.response}
             onJumpToLine={onJumpToLine}
+            showXp={showXp}
           />
         )}
       </div>
@@ -56,57 +63,71 @@ export default function FeedbackPanel({ state, onJumpToLine }: Props) {
 function ResultView({
   response,
   onJumpToLine,
+  showXp,
 }: {
   response: GradeResponse;
   onJumpToLine?: (line: number) => void;
+  showXp: boolean;
 }) {
   const { result, meta } = response;
+  const score = result?.score ?? 0;
+  const passed = result?.passed ?? false;
+  const summary = result?.feedback?.summary ?? "";
+  const xpAwarded = result?.xpAwarded ?? 0;
+  const hintsUsed = result?.hintsUsed ?? 0;
+  const failureArchaeology = result?.feedback?.failureArchaeology;
+  const lineComments = result?.feedback?.lineComments ?? [];
+  const bestPracticeNotes = result?.feedback?.bestPracticeNotes ?? [];
+  const durationMs = meta?.durationMs ?? 0;
+
   return (
     <div className="space-y-4 text-sm">
       <header className="flex flex-wrap items-center gap-3">
-        <ScoreRing score={result.score} />
+        <ScoreRing score={score} />
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <VerdictBadge passed={result.passed} />
+            <VerdictBadge passed={passed} />
             <span className="text-xs text-zinc-500">
-              {meta.provider}
-              {meta.model ? ` · ${meta.model}` : ""} ·{" "}
-              {(meta.durationMs / 1000).toFixed(1)}s
-              {meta.usage?.cachedInputTokens
+              {meta?.provider ?? ""}
+              {meta?.model ? ` · ${meta.model}` : ""} ·{" "}
+              {(durationMs / 1000).toFixed(1)}s
+              {meta?.usage?.cachedInputTokens
                 ? ` · cached ${meta.usage.cachedInputTokens.toLocaleString()} tok`
                 : ""}
             </span>
           </div>
-          <p className="mt-2 text-zinc-300">{result.feedback.summary}</p>
-          <div className="mt-1 text-xs text-emerald-400">
-            +{result.xpAwarded} XP awarded
-            {result.hintsUsed > 0
-              ? ` (${result.hintsUsed} hint${result.hintsUsed === 1 ? "" : "s"} used)`
-              : ""}
-          </div>
+          <p className="mt-2 text-zinc-300">{summary}</p>
+          {showXp && (
+            <div className="mt-1 text-xs text-emerald-400 transition-opacity">
+              +{xpAwarded} XP awarded
+              {hintsUsed > 0
+                ? ` (${hintsUsed} hint${hintsUsed === 1 ? "" : "s"} used)`
+                : ""}
+            </div>
+          )}
         </div>
       </header>
 
       <Breakdown result={result} />
 
-      {result.feedback.failureArchaeology && (
+      {failureArchaeology && (
         <section className="rounded border border-amber-800 bg-amber-950/30 p-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-300">
             Failure archaeology
           </h3>
           <p className="mt-1 whitespace-pre-wrap text-zinc-200">
-            {result.feedback.failureArchaeology}
+            {failureArchaeology}
           </p>
         </section>
       )}
 
-      {result.feedback.lineComments.length > 0 && (
+      {lineComments.length > 0 && (
         <section>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Line comments
           </h3>
           <ul className="space-y-1.5">
-            {result.feedback.lineComments.map((c, i) => (
+            {lineComments.map((c, i) => (
               <LineCommentRow
                 key={i}
                 comment={c}
@@ -117,13 +138,13 @@ function ResultView({
         </section>
       )}
 
-      {result.feedback.bestPracticeNotes.length > 0 && (
+      {bestPracticeNotes.length > 0 && (
         <section>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Best practice notes
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-zinc-300">
-            {result.feedback.bestPracticeNotes.map((note, i) => (
+            {bestPracticeNotes.map((note, i) => (
               <li key={i}>{note}</li>
             ))}
           </ul>
@@ -133,12 +154,13 @@ function ResultView({
   );
 }
 
-function Breakdown({ result }: { result: GradingResult }) {
+function Breakdown({ result }: { result: GradingResult | undefined }) {
+  const breakdown = result?.breakdown;
   const rows: Array<[string, number]> = [
-    ["Selector quality", result.breakdown.selector_quality],
-    ["Assertion quality", result.breakdown.assertion_quality],
-    ["AC coverage", result.breakdown.acceptance_criteria_coverage],
-    ["Code quality", result.breakdown.code_quality],
+    ["Selector quality", breakdown?.selector_quality ?? 0],
+    ["Assertion quality", breakdown?.assertion_quality ?? 0],
+    ["AC coverage", breakdown?.acceptance_criteria_coverage ?? 0],
+    ["Code quality", breakdown?.code_quality ?? 0],
   ];
   return (
     <section>
@@ -180,23 +202,28 @@ function LineCommentRow({
     suggestion: "text-sky-300 bg-sky-950/40 border-sky-800",
     praise: "text-emerald-300 bg-emerald-950/40 border-emerald-800",
   };
+  const type = comment?.type;
+  const line = comment?.line ?? 0;
+  const message = comment?.message ?? "";
+  const citation = comment?.citation;
+  const toneClass = (type && tone[type]) ?? tone.suggestion;
   return (
-    <li className={`rounded border p-2 ${tone[comment.type]}`}>
+    <li className={`rounded border p-2 ${toneClass}`}>
       <div className="flex items-center gap-2 text-xs">
         <button
           type="button"
-          onClick={() => onJumpToLine?.(comment.line)}
+          onClick={() => onJumpToLine?.(line)}
           className="font-mono underline-offset-2 hover:underline"
-          aria-label={`Jump to line ${comment.line}`}
+          aria-label={`Jump to line ${line}`}
         >
-          L{comment.line}
+          L{line}
         </button>
-        <span className="uppercase">{comment.type}</span>
+        <span className="uppercase">{type ?? ""}</span>
       </div>
-      <p className="mt-0.5 text-sm text-zinc-200">{comment.message}</p>
-      {comment.citation && (
+      <p className="mt-0.5 text-sm text-zinc-200">{message}</p>
+      {citation && (
         <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
-          cite: {comment.citation}
+          cite: {citation}
         </p>
       )}
     </li>

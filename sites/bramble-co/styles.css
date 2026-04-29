@@ -84,6 +84,12 @@ h1 { margin-top: 0; }
   display: block;
   padding: 0.25rem 0;
   cursor: pointer;
+  color: var(--fg);
+  transition: color 0.15s, font-weight 0.15s;
+}
+.filters label:has(input[type="checkbox"]:checked) {
+  color: var(--accent-dark);
+  font-weight: 600;
 }
 .filters input[type="range"] { width: 100%; }
 
@@ -104,6 +110,9 @@ h1 { margin-top: 0; }
   flex-direction: column;
   gap: 0.5rem;
 }
+/* Author-defined `.product-card { display: flex }` ties UA `[hidden]`
+   on specificity, so the UA rule loses the cascade. Re-state hiding here. */
+.product-card[hidden] { display: none; }
 .product-card img {
   aspect-ratio: 1;
   width: 100%;

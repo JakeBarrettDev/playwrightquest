@@ -20,6 +20,9 @@ import FeedbackPanel, {
 import TracePlayer from "@/components/TracePlayer/TracePlayer";
 import { useTracePlayer } from "@/components/TracePlayer/useTracePlayer";
 import ProviderSettingsDialog from "@/components/Settings/ProviderSettingsDialog";
+import TutorMask from "@/components/TutorMask";
+import { buildPostMortemScript, type PostMortemScript } from "@/lib/postmortem/sequencer";
+import type { TraceStep } from "@/lib/trace/types";
 import {
   PROVIDER_LABELS,
   getSettingsServerSnapshot,
@@ -69,6 +72,15 @@ export default function PlaywrightIDE({ challenge }: Props) {
   const [hintsUsed, setHintsUsed] = useState(0);
   const [hintText, setHintText] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
+
+  const [postMortemActive, setPostMortemActive] = useState(false);
+  const [postMortemScript, setPostMortemScript] = useState<PostMortemScript | null>(null);
+  const [controlledStep, setControlledStep] = useState<number | undefined>(undefined);
+  const [xpRevealed, setXpRevealed] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [directorOffered, setDirectorOffered] = useState(false);
+  const [showDirectorBanner, setShowDirectorBanner] = useState(false);
+  const [showTryAgain, setShowTryAgain] = useState(false);
 
   const [rightTab, setRightTab] = useState<RightTab>("challenge");
   const [rightWidth, setRightWidth] = useState<number>(480);
@@ -241,39 +253,65 @@ export default function PlaywrightIDE({ challenge }: Props) {
         });
       }
 
-      // Trace annotation + TracePlayer handling.
+      // Trace annotation + TracePlayer handling + post-mortem orchestration.
       if (execution.runId && gradingResponse) {
         try {
           const lineComments = gradingResponse.result.feedback.lineComments;
-          const annotateRes = await fetch(
-            `/api/trace/${execution.runId}/annotate`,
-            {
+          const [annotateRes, actionsRes] = await Promise.all([
+            fetch(`/api/trace/${execution.runId}/annotate`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ lineComments }),
-            }
-          );
+            }),
+            fetch(`/api/trace/${execution.runId}/actions`),
+          ]);
           const { annotatedComments } = (await annotateRes.json()) as {
             annotatedComments: AnnotatedComment[];
           };
+          const actionsData = (await actionsRes.json()) as {
+            steps?: TraceStep[];
+            error?: string;
+          };
+          const traceSteps = actionsData.steps ?? [];
 
+          const script = buildPostMortemScript(
+            gradingResponse.result,
+            traceSteps
+          );
+
+          // Post-mortem always opens the Trace Player so the tutor can scrub
+          // through the run as it speaks. Step-through mode is reserved for
+          // explicit debug invocation.
           const stepThrough = command?.kind === "debug";
-          const shouldOpen =
-            !execution.passed ||
-            command?.kind === "ui" ||
-            command?.kind === "debug";
+          tracePlayer.open({
+            runId: execution.runId,
+            annotatedComments,
+            stepThrough,
+          });
 
-          if (shouldOpen) {
-            tracePlayer.open({
-              runId: execution.runId,
-              annotatedComments,
-              stepThrough,
-            });
-          } else {
-            setReplayData({ runId: execution.runId, annotatedComments });
+          setPostMortemScript(script);
+          setPostMortemActive(true);
+          setControlledStep(undefined);
+          setShowTryAgain(false);
+
+          if (!gradingResponse.result.passed) {
+            setAttemptCount((n) => n + 1);
           }
         } catch {
-          // Annotation failure must not break the grading flow.
+          // Trace pipeline failure must not break grading. Without trace
+          // actions we can still drive a post-mortem from grading alone.
+          try {
+            const script = buildPostMortemScript(gradingResponse.result, []);
+            setPostMortemScript(script);
+            setPostMortemActive(true);
+            setControlledStep(undefined);
+            setShowTryAgain(false);
+            if (!gradingResponse.result.passed) {
+              setAttemptCount((n) => n + 1);
+            }
+          } catch {
+            // sequencer should never throw on a normalized result
+          }
         }
       }
     },
@@ -293,6 +331,12 @@ export default function PlaywrightIDE({ challenge }: Props) {
     setFeedback({ kind: "idle" });
     setReplayData(null);
     setBottomTab("output");
+    setPostMortemActive(false);
+    setPostMortemScript(null);
+    setControlledStep(undefined);
+    setXpRevealed(false);
+    setShowTryAgain(false);
+    setShowDirectorBanner(false);
 
     let execution: ExecutionResultShape | null = null;
     try {
@@ -366,10 +410,44 @@ export default function PlaywrightIDE({ challenge }: Props) {
     async (result: ExecutionResultShape, command: TerminalCommand) => {
       setExecResult(result);
       setReplayData(null);
+      setPostMortemActive(false);
+      setPostMortemScript(null);
+      setControlledStep(undefined);
+      setXpRevealed(false);
+      setShowTryAgain(false);
+      setShowDirectorBanner(false);
       await performGrading(result, code, command);
     },
     [code, performGrading]
   );
+
+  const handlePostMortemComplete = useCallback(() => {
+    setPostMortemActive(false);
+    setControlledStep(undefined);
+    setXpRevealed(true);
+    setShowTryAgain(true);
+    if (attemptCount >= 3 && !directorOffered) {
+      setShowDirectorBanner(true);
+      setDirectorOffered(true);
+    }
+  }, [attemptCount, directorOffered]);
+
+  const handleTryAgain = useCallback(() => {
+    setShowTryAgain(false);
+    setShowDirectorBanner(false);
+    tracePlayer.close();
+    editorRef.current?.focus();
+  }, [tracePlayer]);
+
+  const handleDismissDirector = useCallback(() => {
+    setShowDirectorBanner(false);
+  }, []);
+
+  const handleWatchDirector = useCallback(() => {
+    // Director execution is a future spec — see MASK_POSTMORTEM_SPEC §5.
+    console.info("[Director] Masterclass requested — implementation pending");
+    setShowDirectorBanner(false);
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-zinc-950">
@@ -380,7 +458,9 @@ export default function PlaywrightIDE({ challenge }: Props) {
         hintsUsed={hintsUsed}
         hintPenalty={challenge.hintPenalty}
         hintLoading={hintLoading}
+        showTryAgain={showTryAgain}
         onRun={handleRun}
+        onTryAgain={handleTryAgain}
         onOpenSettings={() => setSettingsOpen(true)}
         onRequestHint={handleRequestHint}
       />
@@ -426,6 +506,7 @@ export default function PlaywrightIDE({ challenge }: Props) {
             replayData={replayData}
             challenge={challenge}
             code={code}
+            xpRevealed={xpRevealed}
             onJumpToLine={handleJumpToLine}
             onOpenTracePlayer={(data) =>
               tracePlayer.open({ runId: data.runId, annotatedComments: data.annotatedComments })
@@ -472,7 +553,25 @@ export default function PlaywrightIDE({ challenge }: Props) {
           runId={tracePlayer.runId}
           annotatedComments={tracePlayer.annotatedComments}
           stepThrough={tracePlayer.stepThrough}
+          controlledStep={postMortemActive ? controlledStep : undefined}
           onClose={tracePlayer.close}
+        />
+      )}
+
+      {postMortemActive && postMortemScript && (
+        <TutorMask
+          lines={postMortemScript.lines}
+          isVisible={true}
+          onStepChange={(stepIndex) => setControlledStep(stepIndex)}
+          onComplete={handlePostMortemComplete}
+          autoPlay={false}
+        />
+      )}
+
+      {showDirectorBanner && (
+        <DirectorBanner
+          onWatch={handleWatchDirector}
+          onDismiss={handleDismissDirector}
         />
       )}
 
@@ -486,6 +585,46 @@ export default function PlaywrightIDE({ challenge }: Props) {
   );
 }
 
+function DirectorBanner({
+  onWatch,
+  onDismiss,
+}: {
+  onWatch: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="fixed left-1/2 top-4 z-[70] w-[min(92vw,560px)] -translate-x-1/2 rounded border border-amber-700 bg-amber-950/90 px-4 py-3 text-sm text-amber-100 shadow-2xl backdrop-blur">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 text-base">🎭</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-amber-100">
+            The Director is watching from the wings.
+          </p>
+          <p className="mt-0.5 text-xs text-amber-200/80">
+            Would you like to see a masterclass performance?
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onWatch}
+              className="rounded border border-amber-500 bg-amber-700/40 px-3 py-1 text-xs font-medium text-amber-50 hover:bg-amber-600/50"
+            >
+              Watch the Director
+            </button>
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="rounded border border-amber-800/60 px-3 py-1 text-xs text-amber-200 hover:bg-amber-900/60"
+            >
+              Keep Going
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Toolbar({
   challengeTitle,
   running,
@@ -493,7 +632,9 @@ function Toolbar({
   hintsUsed,
   hintPenalty,
   hintLoading,
+  showTryAgain,
   onRun,
+  onTryAgain,
   onOpenSettings,
   onRequestHint,
 }: {
@@ -503,7 +644,9 @@ function Toolbar({
   hintsUsed: number;
   hintPenalty: number;
   hintLoading: boolean;
+  showTryAgain: boolean;
   onRun: () => void;
+  onTryAgain: () => void;
   onOpenSettings: () => void;
   onRequestHint: () => void;
 }) {
@@ -539,6 +682,15 @@ function Toolbar({
             ? `${PROVIDER_LABELS[settings.provider]} · ${maskApiKey(settings.apiKey)}`
             : "Set provider & key"}
         </button>
+        {showTryAgain && (
+          <button
+            type="button"
+            onClick={onTryAgain}
+            className="rounded border border-emerald-600 bg-emerald-950/40 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/60"
+          >
+            Try Again ↻
+          </button>
+        )}
         <button
           type="button"
           onClick={onRun}
@@ -600,6 +752,7 @@ function BottomPanel({
   replayData,
   challenge,
   code,
+  xpRevealed,
   onJumpToLine,
   onOpenTracePlayer,
   onOpenVideoModal,
@@ -615,6 +768,7 @@ function BottomPanel({
   replayData: ReplayData | null;
   challenge: Challenge;
   code: string;
+  xpRevealed: boolean;
   onJumpToLine: (line: number) => void;
   onOpenTracePlayer: (data: ReplayData) => void;
   onOpenVideoModal: (runId: string) => void;
@@ -687,7 +841,11 @@ function BottomPanel({
           />
         )}
         {tab === "feedback" && showOutputAndFeedback && (
-          <FeedbackPanel state={feedback} onJumpToLine={onJumpToLine} />
+          <FeedbackPanel
+            state={feedback}
+            onJumpToLine={onJumpToLine}
+            showXp={xpRevealed}
+          />
         )}
         {tab === "terminal" && (
           <Terminal

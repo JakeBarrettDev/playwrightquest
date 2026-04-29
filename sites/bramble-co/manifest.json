@@ -245,7 +245,7 @@
         "locator('ul.product-grid')",
         "locator('section.products ul')"
       ],
-      "aria_notes": "The <ul id='product-grid'> is the container. When a filter is active, non-matching <li> cards get a CSS class that hides them; the list itself is always present.",
+      "aria_notes": "The <ul id='product-grid'> is the container. When a filter is active, non-matching <li> cards receive the HTML `hidden` attribute (CSS hides them via display:none); the list itself is always present.",
       "intentional_traps": [],
       "challenge_hooks": ["filter_interaction", "visibility_assertion"],
       "difficulty": "beginner"
@@ -261,9 +261,9 @@
       "brittle_locators": [
         "locator('#product-grid li')"
       ],
-      "aria_notes": "Each <li class='product-card'> has a data-category attribute ('planters', 'tools', 'seeds'). When filtered, non-matching cards receive class 'hidden' and display:none. toBeHidden() and toBeVisible() are the right assertions.",
+      "aria_notes": "Each <li class='product-card'> has a data-category attribute ('planters', 'tools', 'seeds'). When filtered, non-matching cards receive the HTML `hidden` attribute and are hidden via display:none. toBeHidden() and toBeVisible() are the right assertions — they read the resolved visibility state, not a class name.",
       "intentional_traps": [
-        "hidden_class_trap: cards are hidden via CSS class, not removed from DOM — toBeHidden() correctly detects this, but checking count() will still return 6"
+        "hidden_attribute_trap: cards are hidden via the `hidden` attribute, not removed from DOM — toBeHidden() correctly detects this, but locator.count() still returns 6 because the elements remain attached. Players who assert on count after filtering will be misled."
       ],
       "challenge_hooks": ["filter_interaction", "visibility_assertion"],
       "difficulty": "beginner"

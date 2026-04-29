@@ -12,6 +12,12 @@ interface Props {
   runId: string;
   annotatedComments: AnnotatedComment[];
   stepThrough?: boolean;
+  /**
+   * When set, the post-mortem tutor is driving the trace player. The component
+   * jumps to this step and disables internal keyboard scrubbing so the
+   * commentary stays in sync with the video.
+   */
+  controlledStep?: number;
   onClose: () => void;
 }
 
@@ -19,6 +25,7 @@ export default function TracePlayer({
   runId,
   annotatedComments,
   stepThrough = false,
+  controlledStep,
   onClose,
 }: Props) {
   const [steps, setSteps] = useState<TraceStep[]>([]);
@@ -55,13 +62,29 @@ export default function TracePlayer({
       .finally(() => setLoading(false));
   }, [runId, annotatedComments, stepThrough]);
 
+  const isControlled = controlledStep !== undefined;
+
+  // While the tutor is driving, the controlled prop is the source of truth.
+  // Otherwise we use internal state for keyboard / click scrubbing.
+  const effectiveIndex = isControlled
+    ? Math.max(0, Math.min(Math.max(0, steps.length - 1), controlledStep!))
+    : currentIndex;
+
   const goTo = useCallback(
     (idx: number) => setCurrentIndex(Math.max(0, Math.min(steps.length - 1, idx))),
     [steps.length]
   );
 
-  // Keyboard navigation.
+  // Keyboard navigation. Disabled while the tutor is driving so commentary
+  // and video stay aligned.
   useEffect(() => {
+    if (isControlled) {
+      const escOnly = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", escOnly);
+      return () => window.removeEventListener("keydown", escOnly);
+    }
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown") goTo(currentIndex + 1);
       else if (e.key === "ArrowLeft" || e.key === "ArrowUp") goTo(currentIndex - 1);
@@ -69,22 +92,25 @@ export default function TracePlayer({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [currentIndex, goTo, onClose]);
+  }, [currentIndex, goTo, onClose, isControlled]);
 
   // Scroll active step into view.
   useEffect(() => {
-    const el = stepListRef.current?.querySelector(`[data-step="${currentIndex}"]`);
+    const el = stepListRef.current?.querySelector(`[data-step="${effectiveIndex}"]`);
     el?.scrollIntoView({ block: "nearest" });
-  }, [currentIndex]);
+  }, [effectiveIndex]);
 
-  const step = steps[currentIndex] ?? null;
+  const step = steps[effectiveIndex] ?? null;
   const comment = annotatedComments.find((c) => c.stepIndex === step?.index) ?? null;
   const commentedSet = new Set(
     annotatedComments.filter((c) => c.stepIndex !== null).map((c) => c.stepIndex!)
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-zinc-100">
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-zinc-100"
+      style={isControlled ? { paddingBottom: "11rem" } : undefined}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2.5">
         <button
@@ -102,7 +128,7 @@ export default function TracePlayer({
               ? "Trace error"
               : steps.length === 0
                 ? "No steps recorded"
-                : `Step ${currentIndex + 1} of ${steps.length}: ${humanAction(step?.action ?? "")}`}
+                : `Step ${effectiveIndex + 1} of ${steps.length}: ${humanAction(step?.action ?? "")}`}
         </span>
       </div>
 
@@ -142,11 +168,12 @@ export default function TracePlayer({
                   type="button"
                   data-step={s.index}
                   onClick={() => goTo(s.index)}
+                  disabled={isControlled}
                   className={`flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                    s.index === currentIndex
+                    s.index === effectiveIndex
                       ? "bg-zinc-800 text-zinc-100"
                       : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-                  }`}
+                  } disabled:cursor-not-allowed disabled:hover:bg-transparent`}
                 >
                   <span className="w-5 shrink-0 font-mono text-zinc-600">
                     {s.index + 1}
@@ -184,28 +211,30 @@ export default function TracePlayer({
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-900 px-4 py-2">
-            <button
-              type="button"
-              onClick={() => goTo(currentIndex - 1)}
-              disabled={currentIndex === 0}
-              className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← Prev
-            </button>
-            <span className="text-xs text-zinc-600">
-              {currentIndex + 1} / {steps.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => goTo(currentIndex + 1)}
-              disabled={currentIndex >= steps.length - 1}
-              className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
+          {/* Navigation — hidden while the tutor is driving the player. */}
+          {!isControlled && (
+            <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-900 px-4 py-2">
+              <button
+                type="button"
+                onClick={() => goTo(currentIndex - 1)}
+                disabled={currentIndex === 0}
+                className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ← Prev
+              </button>
+              <span className="text-xs text-zinc-600">
+                {currentIndex + 1} / {steps.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => goTo(currentIndex + 1)}
+                disabled={currentIndex >= steps.length - 1}
+                className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
